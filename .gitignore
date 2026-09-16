@@ -7,7 +7,4 @@
 Thumbs.db
 .idea/
 .vscode/
-
-# Ensure agent context is explicitly included and never ignored
-!.agent-context/
-!.agent-context/**
+.agent-context/
