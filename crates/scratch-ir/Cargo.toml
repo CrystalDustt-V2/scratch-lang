@@ -1,0 +1,11 @@
+[package]
+name = "scratch-ir"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+scratch-blocks = { path = "../scratch-blocks" }
+scratch-language = { path = "../scratch-language" }
+serde = { workspace = true }
+thiserror = { workspace = true }

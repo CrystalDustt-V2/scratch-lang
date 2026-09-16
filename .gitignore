@@ -1,0 +1,13 @@
+/target/
+**/*.rs.bk
+*.pdb
+
+# IDE / OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Ensure agent context is explicitly included and never ignored
+!.agent-context/
+!.agent-context/**

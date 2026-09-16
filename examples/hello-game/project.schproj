@@ -1,0 +1,6 @@
+name: Hello Game
+entry: src/main.sch
+resolution:
+  width: 1280
+  height: 720
+background: white
