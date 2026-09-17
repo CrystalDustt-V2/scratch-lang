@@ -363,5 +363,51 @@ when start:
         assert!((player.transform.y - 300.0).abs() < 0.001);
         assert_eq!(runtime.world.active_tweens.len(), 0);
     }
+
+    #[test]
+    fn test_vm_dynamic_lists_subsystem() {
+        let code = r#"
+when start:
+    list.add("inventory", "sword")
+    list.add("inventory", "shield")
+    list.add("inventory", 42)
+    len_init = list.length("inventory")
+    first_item = list.item("inventory", 1)
+    has_sword = list.contains("inventory", "sword")
+    has_bow = list.contains("inventory", "bow")
+
+    list.insert("inventory", 2, "potion")
+    second_item = list.item("inventory", 2)
+
+    list.replace("inventory", 1, "diamond_sword")
+    replaced_first = list.item("inventory", 1)
+
+    list.delete("inventory", 2)
+    has_potion = list.contains("inventory", "potion")
+
+    list.show("inventory")
+    list.clear("inventory")
+    len_cleared = list.length("inventory")
+"#;
+        let ast = parse(code).expect("parse ok");
+        let reg = BlockRegistry::core();
+        let ir = lower_ast_to_ir(&ast, &reg).expect("ir ok");
+
+        let mut compiler = BytecodeCompiler::new();
+        let program = compiler.compile_program(&ir);
+
+        let mut runtime = VmRuntime::new(program, reg);
+        runtime.start().expect("start ok");
+
+        assert_eq!(runtime.world.get_var("len_init").unwrap().as_number(), Some(3.0));
+        assert_eq!(runtime.world.get_var("first_item").unwrap().as_string(), Some("sword"));
+        assert_eq!(runtime.world.get_var("has_sword").unwrap().as_bool(), true);
+        assert_eq!(runtime.world.get_var("has_bow").unwrap().as_bool(), false);
+        assert_eq!(runtime.world.get_var("second_item").unwrap().as_string(), Some("potion"));
+        assert_eq!(runtime.world.get_var("replaced_first").unwrap().as_string(), Some("diamond_sword"));
+        assert_eq!(runtime.world.get_var("has_potion").unwrap().as_bool(), false);
+        assert_eq!(runtime.world.get_var("len_cleared").unwrap().as_number(), Some(0.0));
+        assert_eq!(runtime.world.get_var("__list_visible_inventory").unwrap().as_bool(), true);
+    }
 }
 

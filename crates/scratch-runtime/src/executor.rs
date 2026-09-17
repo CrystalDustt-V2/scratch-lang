@@ -1,3 +1,4 @@
+use crate::list::ListSystem;
 use crate::movement::MovementSystem;
 use crate::value::RuntimeValue;
 use crate::world::World;
@@ -253,6 +254,47 @@ impl Executor {
                     MovementSystem::execute_set_rotation_style(world, target, style);
                 }
             }
+            "list.add" | "add_to_list" => {
+                if let Some(list_name) = args.first().and_then(|v| v.as_string()) {
+                    let item = args.get(1).cloned().unwrap_or(RuntimeValue::Nil);
+                    ListSystem::add(world, list_name, item);
+                }
+            }
+            "list.delete" | "delete_of_list" => {
+                if let Some(list_name) = args.first().and_then(|v| v.as_string()) {
+                    let idx = args.get(1).unwrap_or(&RuntimeValue::Number(1.0));
+                    ListSystem::delete(world, list_name, idx);
+                }
+            }
+            "list.insert" | "insert_at_list" => {
+                if let Some(list_name) = args.first().and_then(|v| v.as_string()) {
+                    let idx = args.get(1).unwrap_or(&RuntimeValue::Number(1.0));
+                    let item = args.get(2).cloned().unwrap_or(RuntimeValue::Nil);
+                    ListSystem::insert(world, list_name, idx, item);
+                }
+            }
+            "list.replace" | "replace_item_of_list" => {
+                if let Some(list_name) = args.first().and_then(|v| v.as_string()) {
+                    let idx = args.get(1).unwrap_or(&RuntimeValue::Number(1.0));
+                    let item = args.get(2).cloned().unwrap_or(RuntimeValue::Nil);
+                    ListSystem::replace(world, list_name, idx, item);
+                }
+            }
+            "list.clear" => {
+                if let Some(list_name) = args.first().and_then(|v| v.as_string()) {
+                    ListSystem::clear(world, list_name);
+                }
+            }
+            "list.show" => {
+                if let Some(list_name) = args.first().and_then(|v| v.as_string()) {
+                    ListSystem::show(world, list_name);
+                }
+            }
+            "list.hide" => {
+                if let Some(list_name) = args.first().and_then(|v| v.as_string()) {
+                    ListSystem::hide(world, list_name);
+                }
+            }
             _ => {
                 // Other runtime blocks like sound.play
             }
@@ -282,6 +324,20 @@ impl Executor {
                 } else {
                     RuntimeValue::Bool(false)
                 }
+            }
+            "list.item" | "item_of_list" => {
+                let list_name = args.first().and_then(|v| v.as_string()).unwrap_or("");
+                let idx = args.get(1).unwrap_or(&RuntimeValue::Number(1.0));
+                ListSystem::item(world, list_name, idx)
+            }
+            "list.length" | "length_of_list" => {
+                let list_name = args.first().and_then(|v| v.as_string()).unwrap_or("");
+                RuntimeValue::Number(ListSystem::length(world, list_name))
+            }
+            "list.contains" | "list_contains" => {
+                let list_name = args.first().and_then(|v| v.as_string()).unwrap_or("");
+                let item = args.get(1).unwrap_or(&RuntimeValue::Nil);
+                RuntimeValue::Bool(ListSystem::contains(world, list_name, item))
             }
             _ => RuntimeValue::Nil,
         }

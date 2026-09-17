@@ -906,6 +906,142 @@ impl BlockRegistry {
                 .with_example("broadcast_and_wait(\"level_cleared\")")
         );
 
+        // === DYNAMIC LISTS SUBSYSTEM (from Scratch PDF p. 6) ===
+
+        registry.register(
+            BlockDefinition::new("list.add", BlockCategory::Variables, "Append item to end of list", BlockType::Void, "ListSystem::add")
+                .with_param("list", BlockType::String, false, None, "Name of the list variable")
+                .with_param("item", BlockType::Any, false, None, "Item to add to list")
+                .with_doc("Appends an item to the end of the named list.")
+                .with_example("list.add(\"inventory\", \"sword\")")
+                .with_example("list.add(\"scores\", 100)")
+        );
+
+        registry.register(
+            BlockDefinition::new("list.delete", BlockCategory::Variables, "Delete item from list by 1-based index, 'last', or 'all'", BlockType::Void, "ListSystem::delete")
+                .with_param("list", BlockType::String, false, None, "Name of the list variable")
+                .with_param("index", BlockType::Any, false, None, "1-based index number, 'last', or 'all'")
+                .with_doc("Deletes an item from the list at the specified position, or clears the list if 'all'.")
+                .with_example("list.delete(\"inventory\", 1)")
+                .with_example("list.delete(\"inventory\", \"last\")")
+                .with_example("list.delete(\"inventory\", \"all\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("list.insert", BlockCategory::Variables, "Insert item at 1-based index in list", BlockType::Void, "ListSystem::insert")
+                .with_param("list", BlockType::String, false, None, "Name of the list variable")
+                .with_param("index", BlockType::Any, false, None, "1-based index or 'last'")
+                .with_param("item", BlockType::Any, false, None, "Item to insert")
+                .with_doc("Inserts an item into the list at the specified position, shifting subsequent items.")
+                .with_example("list.insert(\"inventory\", 1, \"shield\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("list.replace", BlockCategory::Variables, "Replace item at 1-based index with new value", BlockType::Void, "ListSystem::replace")
+                .with_param("list", BlockType::String, false, None, "Name of the list variable")
+                .with_param("index", BlockType::Any, false, None, "1-based index or 'last'")
+                .with_param("item", BlockType::Any, false, None, "Replacement item value")
+                .with_doc("Overwrites the item at the specified position in the list.")
+                .with_example("list.replace(\"inventory\", 1, \"potion\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("list.item", BlockCategory::Variables, "Get item at 1-based index, 'last', or 'random'", BlockType::Any, "ListSystem::item")
+                .with_param("list", BlockType::String, false, None, "Name of the list variable")
+                .with_param("index", BlockType::Any, false, None, "1-based index, 'last', or 'random'")
+                .with_doc("Returns the value stored at the given position in the list.")
+                .with_example("top_item = list.item(\"inventory\", 1)")
+                .with_example("random_item = list.item(\"inventory\", \"random\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("list.length", BlockCategory::Variables, "Get total number of items in list", BlockType::Number, "ListSystem::length")
+                .with_param("list", BlockType::String, false, None, "Name of the list variable")
+                .with_doc("Returns the number of elements contained in the list.")
+                .with_example("count = list.length(\"inventory\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("list.contains", BlockCategory::Variables, "Check if list contains an item", BlockType::Boolean, "ListSystem::contains")
+                .with_param("list", BlockType::String, false, None, "Name of the list variable")
+                .with_param("item", BlockType::Any, false, None, "Item to search for")
+                .with_doc("Returns true if the list contains the specified item, false otherwise.")
+                .with_example("if list.contains(\"inventory\", \"key\"):")
+        );
+
+        registry.register(
+            BlockDefinition::new("list.clear", BlockCategory::Variables, "Remove all items from list", BlockType::Void, "ListSystem::clear")
+                .with_param("list", BlockType::String, false, None, "Name of the list variable")
+                .with_doc("Removes all entries from the named list.")
+                .with_example("list.clear(\"inventory\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("list.show", BlockCategory::Variables, "Display list monitor on stage overlay", BlockType::Void, "ListSystem::show")
+                .with_param("list", BlockType::String, false, None, "Name of the list variable")
+                .with_doc("Makes the on-screen list monitor visible.")
+                .with_example("list.show(\"inventory\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("list.hide", BlockCategory::Variables, "Hide list monitor from stage overlay", BlockType::Void, "ListSystem::hide")
+                .with_param("list", BlockType::String, false, None, "Name of the list variable")
+                .with_doc("Hides the on-screen list monitor.")
+                .with_example("list.hide(\"inventory\")")
+        );
+
+        // Standard Scratch aliases for lists
+        registry.register(
+            BlockDefinition::new("add_to_list", BlockCategory::Variables, "Append item to list", BlockType::Void, "ListSystem::add")
+                .with_param("list", BlockType::String, false, None, "List name")
+                .with_param("item", BlockType::Any, false, None, "Item to append")
+                .with_doc("Alias for list.add.")
+                .with_example("add_to_list(\"inventory\", \"sword\")")
+        );
+        registry.register(
+            BlockDefinition::new("delete_of_list", BlockCategory::Variables, "Delete item from list", BlockType::Void, "ListSystem::delete")
+                .with_param("list", BlockType::String, false, None, "List name")
+                .with_param("index", BlockType::Any, false, None, "Index")
+                .with_doc("Alias for list.delete.")
+                .with_example("delete_of_list(\"inventory\", 1)")
+        );
+        registry.register(
+            BlockDefinition::new("insert_at_list", BlockCategory::Variables, "Insert item at position in list", BlockType::Void, "ListSystem::insert")
+                .with_param("list", BlockType::String, false, None, "List name")
+                .with_param("index", BlockType::Any, false, None, "Index")
+                .with_param("item", BlockType::Any, false, None, "Item")
+                .with_doc("Alias for list.insert.")
+                .with_example("insert_at_list(\"inventory\", 1, \"potion\")")
+        );
+        registry.register(
+            BlockDefinition::new("replace_item_of_list", BlockCategory::Variables, "Replace item in list", BlockType::Void, "ListSystem::replace")
+                .with_param("list", BlockType::String, false, None, "List name")
+                .with_param("index", BlockType::Any, false, None, "Index")
+                .with_param("item", BlockType::Any, false, None, "Replacement item")
+                .with_doc("Alias for list.replace.")
+                .with_example("replace_item_of_list(\"inventory\", 1, \"potion\")")
+        );
+        registry.register(
+            BlockDefinition::new("item_of_list", BlockCategory::Variables, "Get item of list", BlockType::Any, "ListSystem::item")
+                .with_param("list", BlockType::String, false, None, "List name")
+                .with_param("index", BlockType::Any, false, None, "Index")
+                .with_doc("Alias for list.item.")
+                .with_example("it = item_of_list(\"inventory\", 1)")
+        );
+        registry.register(
+            BlockDefinition::new("length_of_list", BlockCategory::Variables, "Get length of list", BlockType::Number, "ListSystem::length")
+                .with_param("list", BlockType::String, false, None, "List name")
+                .with_doc("Alias for list.length.")
+                .with_example("len = length_of_list(\"inventory\")")
+        );
+        registry.register(
+            BlockDefinition::new("list_contains", BlockCategory::Variables, "Check if list contains item", BlockType::Boolean, "ListSystem::contains")
+                .with_param("list", BlockType::String, false, None, "List name")
+                .with_param("item", BlockType::Any, false, None, "Item to search for")
+                .with_doc("Alias for list.contains.")
+                .with_example("if list_contains(\"inventory\", \"key\"):")
+        );
+
         registry
     }
 

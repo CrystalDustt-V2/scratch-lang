@@ -7,6 +7,7 @@ pub enum RuntimeValue {
     String(String),
     Bool(bool),
     Object(String),
+    List(Vec<RuntimeValue>),
 }
 
 impl RuntimeValue {
@@ -32,6 +33,21 @@ impl RuntimeValue {
             RuntimeValue::Number(n) => *n != 0.0,
             RuntimeValue::String(s) => !s.is_empty(),
             RuntimeValue::Object(_) => true,
+            RuntimeValue::List(l) => !l.is_empty(),
+        }
+    }
+
+    pub fn as_list(&self) -> Option<&[RuntimeValue]> {
+        match self {
+            RuntimeValue::List(l) => Some(l),
+            _ => None,
+        }
+    }
+
+    pub fn as_list_mut(&mut self) -> Option<&mut Vec<RuntimeValue>> {
+        match self {
+            RuntimeValue::List(l) => Some(l),
+            _ => None,
         }
     }
 }
@@ -44,6 +60,10 @@ impl std::fmt::Display for RuntimeValue {
             RuntimeValue::String(s) => write!(f, "{}", s),
             RuntimeValue::Bool(b) => write!(f, "{}", b),
             RuntimeValue::Object(o) => write!(f, "{}", o),
+            RuntimeValue::List(l) => {
+                let items: Vec<String> = l.iter().map(|v| format!("{}", v)).collect();
+                write!(f, "[{}]", items.join(", "))
+            }
         }
     }
 }

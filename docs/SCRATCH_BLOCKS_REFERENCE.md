@@ -104,12 +104,27 @@ This document provides a comprehensive mapping of every single Scratch block fro
 
 ## 5. Data & Variables
 
+### Variables
 | Original Scratch Block | scratch-lang Function / Syntax | Return Type | Description |
 | :--- | :--- | :--- | :--- |
 | `set [var] to (0)` | `var = 0` | Native | Variable assignment statement. |
 | `change [var] by (1)` | `var += 1` | Native | In-place compound addition assignment. |
 | `show variable [var]` | `variable.show(name)` | `Void` | Shows variable display overlay on screen. |
 | `hide variable [var]` | `variable.hide(name)` | `Void` | Hides variable display overlay on screen. |
+
+### Dynamic Lists
+| Original Scratch Block | scratch-lang Function / Syntax | Return Type | Description |
+| :--- | :--- | :--- | :--- |
+| `add [thing] to [list v]` | `list.add(name, item)` | `Void` | Appends item to the end of the named list. |
+| `delete (1) of [list v]` | `list.delete(name, index)` | `Void` | Removes item at 1-based index, 'last', or clears if 'all'. |
+| `insert [thing] at (1) of [list v]` | `list.insert(name, index, item)`| `Void` | Inserts item into list at 1-based index position. |
+| `replace item (1) of [list v] with [thing]` | `list.replace(name, index, item)` | `Void` | Replaces value at 1-based index in list. |
+| `item (1) of [list v]` | `list.item(name, index)` | `Any` | Returns item at 1-based index, 'last', or 'random'. |
+| `length of [list v]` | `list.length(name)` | `Number` | Returns number of items in list. |
+| `[list v] contains [thing]?` | `list.contains(name, item)` | `Boolean` | Checks if list contains specified value. |
+| `clear list [list v]` | `list.clear(name)` | `Void` | Removes all elements from the list. |
+| `show list [list v]` | `list.show(name)` | `Void` | Displays on-screen list monitor overlay. |
+| `hide list [list v]` | `list.hide(name)` | `Void` | Hides on-screen list monitor overlay. |
 
 ---
 

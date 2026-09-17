@@ -103,6 +103,21 @@ impl World {
         self.variables.get(name).cloned().unwrap_or(RuntimeValue::Nil)
     }
 
+    pub fn get_list(&self, name: &str) -> Option<&[RuntimeValue]> {
+        self.variables.get(name).and_then(|v| v.as_list())
+    }
+
+    pub fn get_list_mut(&mut self, name: &str) -> &mut Vec<RuntimeValue> {
+        let entry = self.variables.entry(name.to_string()).or_insert_with(|| RuntimeValue::List(Vec::new()));
+        if !matches!(entry, RuntimeValue::List(_)) {
+            *entry = RuntimeValue::List(Vec::new());
+        }
+        match entry {
+            RuntimeValue::List(l) => l,
+            _ => unreachable!(),
+        }
+    }
+
     pub fn is_action_down(&self, action: &str) -> bool {
         self.input_actions_down.contains(action)
     }

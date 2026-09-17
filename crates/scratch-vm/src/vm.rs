@@ -1,6 +1,6 @@
 use scratch_blocks::BlockRegistry;
 use scratch_bytecode::{BytecodeValue, Chunk, OpCode};
-use scratch_runtime::{MovementSystem, RuntimeValue, World};
+use scratch_runtime::{ListSystem, MovementSystem, RuntimeValue, World};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -559,6 +559,7 @@ impl Vm {
                         Some(BytecodeValue::String(s)) | Some(BytecodeValue::Object(s)) => s.clone(),
                         Some(BytecodeValue::Number(n)) => n.to_string(),
                         Some(BytecodeValue::Bool(b)) => b.to_string(),
+                        Some(BytecodeValue::List(l)) => format!("[{}]", l.iter().map(|item| item.to_string()).collect::<Vec<_>>().join(", ")),
                         Some(BytecodeValue::Nil) | None => String::new(),
                     }
                 };
@@ -803,6 +804,71 @@ impl Vm {
                 world.set_var("__game_stopped", RuntimeValue::Bool(true));
                 Ok(None)
             }
+            "list.add" | "add_to_list" => {
+                if let Some(list_name) = args.first().and_then(|v| as_str(v)) {
+                    let item = args.get(1).map(bytecode_to_runtime).unwrap_or(RuntimeValue::Nil);
+                    ListSystem::add(world, list_name, item);
+                }
+                Ok(None)
+            }
+            "list.delete" | "delete_of_list" => {
+                if let Some(list_name) = args.first().and_then(|v| as_str(v)) {
+                    let idx_val = args.get(1).map(bytecode_to_runtime).unwrap_or(RuntimeValue::Number(1.0));
+                    ListSystem::delete(world, list_name, &idx_val);
+                }
+                Ok(None)
+            }
+            "list.insert" | "insert_at_list" => {
+                if let Some(list_name) = args.first().and_then(|v| as_str(v)) {
+                    let idx_val = args.get(1).map(bytecode_to_runtime).unwrap_or(RuntimeValue::Number(1.0));
+                    let item = args.get(2).map(bytecode_to_runtime).unwrap_or(RuntimeValue::Nil);
+                    ListSystem::insert(world, list_name, &idx_val, item);
+                }
+                Ok(None)
+            }
+            "list.replace" | "replace_item_of_list" => {
+                if let Some(list_name) = args.first().and_then(|v| as_str(v)) {
+                    let idx_val = args.get(1).map(bytecode_to_runtime).unwrap_or(RuntimeValue::Number(1.0));
+                    let item = args.get(2).map(bytecode_to_runtime).unwrap_or(RuntimeValue::Nil);
+                    ListSystem::replace(world, list_name, &idx_val, item);
+                }
+                Ok(None)
+            }
+            "list.item" | "item_of_list" => {
+                let list_name = args.first().and_then(|v| as_str(v)).unwrap_or("");
+                let idx_val = args.get(1).map(bytecode_to_runtime).unwrap_or(RuntimeValue::Number(1.0));
+                let res = ListSystem::item(world, list_name, &idx_val);
+                Ok(Some(runtime_to_bytecode(&res)))
+            }
+            "list.length" | "length_of_list" => {
+                let list_name = args.first().and_then(|v| as_str(v)).unwrap_or("");
+                let len = ListSystem::length(world, list_name);
+                Ok(Some(BytecodeValue::Number(len)))
+            }
+            "list.contains" | "list_contains" => {
+                let list_name = args.first().and_then(|v| as_str(v)).unwrap_or("");
+                let item = args.get(1).map(bytecode_to_runtime).unwrap_or(RuntimeValue::Nil);
+                let found = ListSystem::contains(world, list_name, &item);
+                Ok(Some(BytecodeValue::Bool(found)))
+            }
+            "list.clear" => {
+                if let Some(list_name) = args.first().and_then(|v| as_str(v)) {
+                    ListSystem::clear(world, list_name);
+                }
+                Ok(None)
+            }
+            "list.show" => {
+                if let Some(list_name) = args.first().and_then(|v| as_str(v)) {
+                    ListSystem::show(world, list_name);
+                }
+                Ok(None)
+            }
+            "list.hide" => {
+                if let Some(list_name) = args.first().and_then(|v| as_str(v)) {
+                    ListSystem::hide(world, list_name);
+                }
+                Ok(None)
+            }
             _ => Ok(None),
         }
     }
@@ -830,6 +896,7 @@ fn is_truthy(val: &BytecodeValue) -> bool {
         BytecodeValue::Number(n) => *n != 0.0,
         BytecodeValue::String(s) => !s.is_empty(),
         BytecodeValue::Object(_) => true,
+        BytecodeValue::List(l) => !l.is_empty(),
     }
 }
 
@@ -840,6 +907,7 @@ fn runtime_to_bytecode(rv: &RuntimeValue) -> BytecodeValue {
         RuntimeValue::String(s) => BytecodeValue::String(s.clone()),
         RuntimeValue::Bool(b) => BytecodeValue::Bool(*b),
         RuntimeValue::Object(o) => BytecodeValue::Object(o.clone()),
+        RuntimeValue::List(l) => BytecodeValue::List(l.iter().map(runtime_to_bytecode).collect()),
     }
 }
 
@@ -850,5 +918,6 @@ fn bytecode_to_runtime(bv: &BytecodeValue) -> RuntimeValue {
         BytecodeValue::String(s) => RuntimeValue::String(s.clone()),
         BytecodeValue::Bool(b) => RuntimeValue::Bool(*b),
         BytecodeValue::Object(o) => RuntimeValue::Object(o.clone()),
+        BytecodeValue::List(l) => RuntimeValue::List(l.iter().map(bytecode_to_runtime).collect()),
     }
 }

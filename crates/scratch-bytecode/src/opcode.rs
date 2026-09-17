@@ -7,6 +7,7 @@ pub enum BytecodeValue {
     String(String),
     Bool(bool),
     Object(String),
+    List(Vec<BytecodeValue>),
 }
 
 impl std::fmt::Display for BytecodeValue {
@@ -17,6 +18,10 @@ impl std::fmt::Display for BytecodeValue {
             BytecodeValue::String(s) => write!(f, "\"{}\"", s),
             BytecodeValue::Bool(b) => write!(f, "{}", b),
             BytecodeValue::Object(o) => write!(f, "@{}", o),
+            BytecodeValue::List(l) => {
+                let items: Vec<String> = l.iter().map(|v| format!("{}", v)).collect();
+                write!(f, "[{}]", items.join(", "))
+            }
         }
     }
 }
