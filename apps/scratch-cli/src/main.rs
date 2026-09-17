@@ -10,9 +10,12 @@ use scratch_scenes::SceneData;
 use std::path::{Path, PathBuf};
 
 mod config;
+mod gui_preview;
+mod gui_studio;
 mod package;
 mod project_cmd;
 mod sdk;
+mod stage_view;
 mod studio;
 mod templates;
 
@@ -339,9 +342,9 @@ fn main() {
                     std::process::exit(1);
                 }
             }
-            ProjectSubcommand::Studio { path, port, no_open } => {
+            ProjectSubcommand::Studio { path, .. } => {
                 let target = path.unwrap_or_else(|| PathBuf::from("."));
-                if let Err(e) = studio::start_studio(&target, port, no_open) {
+                if let Err(e) = gui_studio::run_studio_native(&target) {
                     eprintln!("Studio error: {}", e);
                     std::process::exit(1);
                 }
@@ -382,7 +385,7 @@ fn main() {
                 }
             }
         },
-        Commands::Run { path, preview: _, headless, port, fps: _ } => {
+        Commands::Run { path, preview: _, headless, port: _, fps: _ } => {
             let target_path = path.unwrap_or_else(|| PathBuf::from("."));
             let is_headless = headless || config.preview_mode == "headless";
 
@@ -393,11 +396,8 @@ fn main() {
                     std::process::exit(1);
                 }
             } else {
-                // Popup window preview (default)
-                let p = port.unwrap_or(config.studio_port);
-                println!("Launching native popup preview window...");
-                if let Err(e) = run_preview_popup(&target_path, p) {
-                    eprintln!("Error launching popup preview: {}", e);
+                if let Err(e) = gui_preview::run_preview_native(&target_path) {
+                    eprintln!("Error launching live popup preview: {}", e);
                     std::process::exit(1);
                 }
             }
@@ -439,9 +439,9 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        Commands::Studio { path, port, no_open } => {
+        Commands::Studio { path, .. } => {
             let target = path.unwrap_or_else(|| PathBuf::from("."));
-            if let Err(e) = studio::start_studio(&target, port, no_open) {
+            if let Err(e) = gui_studio::run_studio_native(&target) {
                 eprintln!("Studio error: {}", e);
                 std::process::exit(1);
             }
@@ -513,8 +513,8 @@ fn create_new_project(
     println!();
     println!(" Next steps:");
     println!("   cd {}", dest_path.display());
-    println!("   scratch run            # Open popup window preview");
-    println!("   scratch project studio # Open Scratch Studio web IDE");
+    println!("   scratch run            # Open native live popup app preview");
+    println!("   scratch project studio # Open native Scratch Studio desktop IDE");
     println!("============================================================");
 
     Ok(())
@@ -531,171 +531,6 @@ fn run_project_headless(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
 
     let runtime = Runtime::new(ir, registry);
     NativeRunner::run(runtime, &config);
-
-    Ok(())
-}
-
-fn run_preview_popup(path: &Path, port: u16) -> Result<(), Box<dyn std::error::Error>> {
-    let (entry_path, config) = project_cmd::resolve_entry_file(path)?;
-    let proj_dir = if entry_path.is_file() {
-        entry_path
-            .parent()
-            .and_then(|p| if p.ends_with("src") { p.parent() } else { Some(p) })
-            .unwrap_or(Path::new("."))
-            .to_path_buf()
-    } else {
-        path.to_path_buf()
-    };
-
-    let addr = format!("127.0.0.1:{}", port);
-    let listener = match std::net::TcpListener::bind(&addr) {
-        Ok(l) => l,
-        Err(_) => {
-            let fallback_port = port + 1;
-            let fallback_addr = format!("127.0.0.1:{}", fallback_port);
-            std::net::TcpListener::bind(&fallback_addr)?
-        }
-    };
-
-    let local_addr = listener.local_addr()?;
-    let url = format!("http://{}", local_addr);
-
-    println!("============================================================");
-    println!(" Scratch Live Preview Running!");
-    println!(" Project:        {} ({})", config.name, entry_path.display());
-    println!(" Preview Window: Standalone Desktop Popup");
-    println!(" Preview URL:    {}", url);
-    println!(" Controls:       Arrow Keys / WASD, Space (Jump), Mouse Click");
-    println!(" Press Ctrl+C in terminal to close preview.");
-    println!("============================================================");
-
-    // Launch standalone popup window via Edge/Chrome app mode
-    open_popup_app(&url);
-
-    let shared_entry = std::sync::Arc::new(entry_path);
-    let shared_dir = std::sync::Arc::new(proj_dir);
-    let shared_config = std::sync::Arc::new(config);
-
-    for stream in listener.incoming() {
-        match stream {
-            Ok(mut stream) => {
-                let entry = std::sync::Arc::clone(&shared_entry);
-                let dir = std::sync::Arc::clone(&shared_dir);
-                let conf = std::sync::Arc::clone(&shared_config);
-
-                std::thread::spawn(move || {
-                    let _ = handle_preview_client(&mut stream, &entry, &dir, &conf);
-                });
-            }
-            Err(e) => {
-                eprintln!("Connection failed: {}", e);
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn open_popup_app(url: &str) {
-    #[cfg(target_os = "windows")]
-    {
-        // Try Edge app mode first (native standalone window without address bar or tabs)
-        let edge_status = std::process::Command::new("cmd")
-            .args(["/C", "start", "msedge", &format!("--app={}", url), "--window-size=1020,720"])
-            .spawn();
-
-        if edge_status.is_err() {
-            // Try Chrome app mode fallback
-            let chrome_status = std::process::Command::new("cmd")
-                .args(["/C", "start", "chrome", &format!("--app={}", url), "--window-size=1020,720"])
-                .spawn();
-
-            if chrome_status.is_err() {
-                // Fallback to default browser
-                let _ = std::process::Command::new("cmd")
-                    .args(["/C", "start", url])
-                    .spawn();
-            }
-        }
-    }
-    #[cfg(target_os = "macos")]
-    {
-        let _ = std::process::Command::new("open").arg(url).spawn();
-    }
-    #[cfg(target_os = "linux")]
-    {
-        let _ = std::process::Command::new("xdg-open").arg(url).spawn();
-    }
-}
-
-fn handle_preview_client(
-    stream: &mut std::net::TcpStream,
-    entry_file: &Path,
-    project_dir: &Path,
-    config: &ProjectConfig,
-) -> Result<(), Box<dyn std::error::Error>> {
-    use std::io::{Read, Write};
-
-    let mut buffer = [0u8; 4096];
-    let r = stream.read(&mut buffer)?;
-    if r == 0 { return Ok(()); }
-
-    let req = String::from_utf8_lossy(&buffer[..r]);
-    let first_line = req.lines().next().unwrap_or("");
-    let parts: Vec<&str> = first_line.split_whitespace().collect();
-    if parts.len() < 2 { return Ok(()); }
-
-    let uri = parts[1];
-    if uri == "/" || uri == "/index.html" {
-        let html = studio::render_studio_html(&config.name);
-        let header = format!(
-            "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
-            html.len()
-        );
-        stream.write_all(header.as_bytes())?;
-        stream.write_all(html.as_bytes())?;
-        stream.flush()?;
-    } else if uri == "/api/project" {
-        let code = std::fs::read_to_string(entry_file).unwrap_or_default();
-        let registry = BlockRegistry::core();
-        let mut blocks = Vec::new();
-        for b in registry.iter() {
-            blocks.push(serde_json::json!({
-                "name": b.name,
-                "category": format!("{:?}", b.category),
-                "description": b.description,
-                "snippet": b.autocomplete_metadata.snippet,
-                "doc": b.documentation,
-            }));
-        }
-        let json = serde_json::json!({
-            "name": config.name,
-            "code": code,
-            "entry": entry_file.to_string_lossy(),
-            "blocks": blocks,
-        });
-        let body = json.to_string();
-        let header = format!(
-            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
-            body.len()
-        );
-        stream.write_all(header.as_bytes())?;
-        stream.write_all(body.as_bytes())?;
-        stream.flush()?;
-    } else if uri.starts_with("/assets/") {
-        let rel = uri.trim_start_matches('/');
-        let file = project_dir.join(rel);
-        if file.is_file() {
-            let bytes = std::fs::read(&file)?;
-            let header = format!(
-                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
-                bytes.len()
-            );
-            stream.write_all(header.as_bytes())?;
-            stream.write_all(&bytes)?;
-            stream.flush()?;
-        }
-    }
 
     Ok(())
 }

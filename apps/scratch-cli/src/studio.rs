@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use scratch_assets::AssetIndex;
 use scratch_blocks::BlockRegistry;
 use scratch_bytecode::BytecodeCompiler;

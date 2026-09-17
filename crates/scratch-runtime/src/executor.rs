@@ -322,8 +322,38 @@ impl Executor {
                     SensingSystem::go_back_layers(world, target, count);
                 }
             }
+            "say" => {
+                if let (Some(target), Some(text)) = (args.first().and_then(|v| v.as_string()), args.get(1).and_then(|v| v.as_string())) {
+                    world.set_var(format!("__say_{}", target), RuntimeValue::String(text.to_string()));
+                }
+            }
+            "say_for" => {
+                if let (Some(target), Some(text)) = (args.first().and_then(|v| v.as_string()), args.get(1).and_then(|v| v.as_string())) {
+                    world.set_var(format!("__say_{}", target), RuntimeValue::String(text.to_string()));
+                }
+            }
+            "think" | "think_for" => {
+                if let (Some(target), Some(text)) = (args.first().and_then(|v| v.as_string()), args.get(1).and_then(|v| v.as_string())) {
+                    world.set_var(format!("__think_{}", target), RuntimeValue::String(text.to_string()));
+                }
+            }
+            "sound.play" | "sound.play_until_done" => {
+                if let Some(snd) = args.first().and_then(|v| v.as_string()) {
+                    world.broadcast(format!("__sound:{}", snd));
+                }
+            }
+            "broadcast" | "broadcast_and_wait" => {
+                if let Some(msg) = args.first().and_then(|v| v.as_string()) {
+                    world.broadcast(msg);
+                }
+            }
+            "scene.switch" => {
+                if let Some(scene) = args.first().and_then(|v| v.as_string()) {
+                    world.broadcast(format!("__scene_switch:{}", scene));
+                }
+            }
             _ => {
-                // Other runtime blocks like sound.play
+                // Other runtime blocks
             }
         }
     }

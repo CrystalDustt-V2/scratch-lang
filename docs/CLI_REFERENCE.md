@@ -130,15 +130,15 @@ scratch project add-scene Level2
 # Register a sprite or sound asset into the project manifest
 scratch project add-asset --name cat --kind sprite --path assets/cat.png
 
-# Launch the in-browser visual Scratch Studio IDE
-scratch project studio --port 3456
+# Launch the interactive native Scratch Studio desktop IDE
+scratch project studio
 ```
 
 ---
 
 ## 5. `scratch package`
 
-Inspect, create, extract, and export portable `.scratch` packages.
+# Inspect, create, extract, and export portable `.scratch` packages.
 
 ```bash
 # Pack a project directory into a single .scratch bundle
@@ -161,23 +161,20 @@ scratch package export-studio -o ./dist/studio
 
 ## 6. `scratch run`
 
-Run an instant preview of the project.
+Run a live simulation preview of the project in an authentic native Rust desktop popup window.
 
 ```bash
-# Open preview in a standalone app popup window
+# Open live preview in a native Rust popup window
 scratch run
 
 # Preview another project directory
 scratch run ./games/platformer
 
-# Run headless in the terminal without opening a window
+# Run headless in the terminal without opening a window (for CI / automated testing)
 scratch run --headless --ticks 100
-
-# Specify custom port
-scratch run --port 8080
 ```
 
-On Windows, `scratch run` automatically detects installed browsers (Edge, Chrome) and opens a dedicated borderless application window (`--app=http://127.0.0.1:<port> --window-size=1020,720`) simulating a standalone native game window.
+`scratch run` compiles your source code on-the-fly and opens a dedicated native desktop window (powered by `eframe` / `egui`). The stage runs in real time at 60 FPS with full keyboard and mouse control, entity collision handling, dialogue bubbles, sound playback indicators, variable HUD monitors, and scene transitions. No web browsers or servers required.
 
 ---
 

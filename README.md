@@ -422,19 +422,31 @@ scratch project test        # Run validation suite
 scratch project info        # Print project metadata
 scratch project add-scene Level2
 scratch project add-asset --name Cat --kind sprite --path assets/cat.png
-scratch project studio      # Launch in-browser visual IDE
+scratch project studio      # Launch native Rust Desktop IDE
 ```
 
 ### `scratch run`
 
 ```bash
-scratch run                   # Preview in standalone popup window
+scratch run                   # Launch live preview in native Rust popup window
 scratch run ./my_game         # Preview a specific project
-scratch run --headless        # Run in terminal without a window
-scratch run --port 8080       # Custom preview server port
+scratch run --headless        # Run in terminal without a window (CI / headless simulation)
 ```
 
-On Windows, the preview opens as a dedicated borderless application window (Edge/Chrome `--app=` mode) simulating a native game window.
+`scratch run` launches a **live native Rust desktop popup window** powered by `eframe` / `egui`. It compiles and runs the game in real time with 60 FPS rendering, dynamic sprite positioning, speech/thought bubbles, variable HUD monitors, list displays, and keyboard (`WASD` / Arrow keys / `Space`) & mouse input. No browser or web runtime required.
+
+### `scratch project studio`
+
+```bash
+scratch project studio        # Open native Scratch Studio desktop IDE
+scratch studio                # Top-level shortcut alias
+```
+
+Launches an interactive, **native Rust desktop IDE**:
+- **Scratch Block Palette**: Authentic colorful category chips (Motion, Looks, Sound, Events, Control, Sensing, Operators, Variables, Lists) with click-to-insert code snippets and documentation.
+- **Code Editor**: Monospace `.sch` editor with line numbers, live syntax diagnostics, format on save (`Ctrl+S`), and auto-indentation.
+- **Live Stage Preview**: Embedded real-time 60 FPS game stage with play/pause/reset controls.
+- **Inspectors**: Real-time variables & lists monitor, entity properties inspector, and diagnostic error output.
 
 ### `scratch build`
 
