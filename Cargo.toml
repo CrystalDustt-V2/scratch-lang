@@ -4,6 +4,8 @@ members = [
     "crates/scratch-blocks",
     "crates/scratch-language",
     "crates/scratch-ir",
+    "crates/scratch-bytecode",
+    "crates/scratch-vm",
     "crates/scratch-runtime",
     "crates/scratch-project",
     "runtimes/native",

@@ -45,9 +45,10 @@
    - Decoupled from AST parser and Bevy internals.
 
 2. **`scratch-language`**
-   - Pure Rust text analysis: Lexer -> Indentation/Token Stream -> AST -> Semantic Analyzer -> Diagnostics.
+   - Pure Rust text analysis: Lexer -> Virtual Indent Tokens -> AST -> Recursive Descent Parser.
+   - **Formatter (`format_source`)**: Canonical indentation and spacing pretty-printer.
+   - **Linter (`lint_source`)**: Educational diagnostic rules (`SL001`–`SL010`) with exact caret highlighting and "Did you mean?" suggestions.
    - No Bevy dependency.
-   - Educational diagnostic formatting (Did you mean "Player"?).
 
 3. **`scratch-ir` (Game IR)**
    - Platform-independent representation of game logic and event handlers.
@@ -55,7 +56,9 @@
 
 4. **`scratch-bytecode` & `scratch-vm`**
    - High-performance, deterministic execution VM for game logic.
-   - Interprets bytecode against the runtime state.
+   - `scratch-bytecode`: OpCodes, constant pools, jump labels/patching, and Bytecode Compiler.
+   - `scratch-vm`: Stack-based virtual machine with per-tick step/fuel limits to prevent infinite loops from locking the game or window thread.
+   - `VmRuntime`: Orchestrates input, collision, update, and start event chunks against the runtime `World`.
 
 5. **`scratch-runtime`**
    - Headless core game state, entities, logical input mapping, event dispatcher, movement, collision, camera, sound abstractions.

@@ -14,10 +14,10 @@
 - Lexer (indentation tokens, keywords, symbols, literals): Implemented
 - AST definition: Implemented
 - Parser (events, statements, expressions, assignments, calls, if, repeat): Implemented
-- Name resolution & Semantic validation: Partially Implemented (Block Registry validation in IR lowering)
+- Name resolution & Semantic validation: Implemented
 - Diagnostics & Educational error formatting: Implemented
-- Formatter (`scratch format`): Planned
-- Linter (`SL001`-`SL010`): Planned
+- Formatter (`scratch format`): Implemented
+- Linter (`scratch lint`, `SL001`-`SL010`): Implemented
 
 ## 2. Block Registry (`scratch-blocks`)
 - Block schema (name, category, params, return, docs, runtime mapping): Implemented
@@ -31,8 +31,11 @@
 - IR serialization/display for debugging: Implemented
 
 ## 4. Bytecode & VM (`scratch-bytecode`, `scratch-vm`)
-- Bytecode instruction set & compiler: Planned
-- VM stack machine & execution loop: Planned
+- Bytecode instruction set (`OpCode`): Implemented
+- Bytecode chunk compiler from Game IR: Implemented
+- VM stack machine & execution loop: Implemented
+- Infinite loop fuel/step limit guard: Implemented
+- `VmRuntime` event execution: Implemented
 
 ## 5. Runtime Architecture (`scratch-runtime`)
 - Headless GameState & World: Implemented
@@ -49,7 +52,7 @@
 - Fast headless runner fallback: Implemented
 
 ## 7. Developer Tooling & Apps
-- `scratch-cli` (`new`, `run`, `check`, `test`): Implemented
+- `scratch-cli` (`new`, `run`, `check`, `lint`, `format`, `test`): Implemented
 - `scratch-lsp`: Planned
 - `scratch-studio`: Planned
 

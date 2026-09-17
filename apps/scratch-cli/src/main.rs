@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use scratch_blocks::BlockRegistry;
 use scratch_ir::lower_ast_to_ir;
-use scratch_language::parse;
+use scratch_language::{format_source, lint_source, parse};
 use scratch_native::NativeRunner;
 use scratch_project::ProjectConfig;
 use scratch_runtime::Runtime;
@@ -31,6 +31,19 @@ enum Commands {
     Check {
         /// Path to project directory or .sch file (defaults to current directory)
         path: Option<PathBuf>,
+    },
+    /// Lint .sch files for common game errors and educational guidance
+    Lint {
+        /// Path to project directory or .sch file (defaults to current directory)
+        path: Option<PathBuf>,
+    },
+    /// Format .sch source files deterministically
+    Format {
+        /// Path to project directory or .sch file (defaults to current directory)
+        path: Option<PathBuf>,
+        /// Check formatting without writing changes
+        #[arg(long)]
+        check: bool,
     },
     /// Run automated game tests
     Test {
@@ -63,6 +76,20 @@ fn main() {
                 std::process::exit(1);
             } else {
                 println!("All checks passed! No errors found.");
+            }
+        }
+        Commands::Lint { path } => {
+            let target_path = path.unwrap_or_else(|| PathBuf::from("."));
+            if let Err(e) = lint_project(&target_path) {
+                eprintln!("Lint failed: {}", e);
+                std::process::exit(1);
+            }
+        }
+        Commands::Format { path, check } => {
+            let target_path = path.unwrap_or_else(|| PathBuf::from("."));
+            if let Err(e) = format_project(&target_path, check) {
+                eprintln!("Format failed: {}", e);
+                std::process::exit(1);
             }
         }
         Commands::Test { path } => {
@@ -163,10 +190,60 @@ fn check_project(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
 
     let ast = parse(&source).map_err(|e| format!("In {}: {}", entry_path.display(), e))?;
     let registry = BlockRegistry::core();
-    let _ir = lower_ast_to_ir(&ast, &registry).map_err(|e| format!("IR lowering in {}: {}", entry_path.display(), e))?;
+    let ir = lower_ast_to_ir(&ast, &registry).map_err(|e| format!("IR lowering in {}: {}", entry_path.display(), e))?;
+    let mut compiler = scratch_bytecode::BytecodeCompiler::new();
+    let bytecode = compiler.compile_program(&ir);
 
+    let total_instructions: usize = bytecode.events.iter().map(|e| e.chunk.instructions.len()).sum();
     println!("Validated: {}", entry_path.display());
+    println!("  AST Events: {}", ast.events.len());
+    println!("  Game IR Events: {}", ir.events.len());
+    println!("  Bytecode Events: {} (Total instructions: {})", bytecode.events.len(), total_instructions);
     Ok(())
+}
+
+fn lint_project(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let (entry_path, _config) = resolve_entry_file(path)?;
+    let source = std::fs::read_to_string(&entry_path)?;
+
+    let registry = BlockRegistry::core();
+    let diagnostics = lint_source(&source, &registry).map_err(|e| format!("Lint error: {}", e))?;
+
+    if diagnostics.is_empty() {
+        println!("No lint issues found in {}! Clean code.", entry_path.display());
+        return Ok(());
+    }
+
+    println!("Found {} diagnostic(s) in {}:\n", diagnostics.len(), entry_path.display());
+    for diag in &diagnostics {
+        println!("{}", diag.render(&source));
+    }
+
+    Err(format!("{} lint issue(s) detected", diagnostics.len()).into())
+}
+
+fn format_project(path: &Path, check_only: bool) -> Result<(), Box<dyn std::error::Error>> {
+    let (entry_path, _config) = resolve_entry_file(path)?;
+    let source = std::fs::read_to_string(&entry_path)?;
+
+    let formatted = format_source(&source).map_err(|e| format!("Format error: {}", e))?;
+
+    if check_only {
+        if source == formatted {
+            println!("File {} is correctly formatted.", entry_path.display());
+            Ok(())
+        } else {
+            Err(format!("File {} is not formatted. Run 'scratch format' to format.", entry_path.display()).into())
+        }
+    } else {
+        if source != formatted {
+            std::fs::write(&entry_path, &formatted)?;
+            println!("Formatted: {}", entry_path.display());
+        } else {
+            println!("Already formatted: {}", entry_path.display());
+        }
+        Ok(())
+    }
 }
 
 fn run_project(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
@@ -191,10 +268,15 @@ fn test_project(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let ast = parse(&source).map_err(|e| format!("In {}: {}", entry_path.display(), e))?;
     let registry = BlockRegistry::core();
     let ir = lower_ast_to_ir(&ast, &registry).map_err(|e| format!("IR lowering error: {}", e))?;
+    let mut compiler = scratch_bytecode::BytecodeCompiler::new();
+    let bytecode = compiler.compile_program(&ir);
 
-    let mut runtime = Runtime::new(ir, registry);
-    NativeRunner::run_headless_ticks(&mut runtime, 10, 0.016);
-    println!("Executed 10 simulation frames headlessly without errors.");
+    let mut vm_runtime = scratch_vm::VmRuntime::new(bytecode, registry);
+    vm_runtime.start()?;
+    for _ in 0..10 {
+        vm_runtime.tick(0.016)?;
+    }
+    println!("Executed 10 simulation frames via Bytecode VM without errors.");
 
     Ok(())
 }

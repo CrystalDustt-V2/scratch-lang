@@ -2,16 +2,20 @@
 
 All notable changes to the scratch-lang codebase will be documented in this file.
 
+## [0.2.0] - 2026-09-17 (Session 002)
+### Added
+- **Developer Tooling**:
+  - `scratch-language::formatter`: Deterministic source code formatter (`scratch format`).
+  - `scratch-language::linter`: Game-aware educational linter (`scratch lint`) with rules `SL001` (unknown object), `SL002` (unassigned variable), `SL003` (unknown command), `SL004` (parameter mismatch), `SL006` (unreachable code), `SL007` (per-frame misuse), `SL008` (non-positive loop count), and `SL010` (unknown input action).
+- **Bytecode & VM**:
+  - `crates/scratch-bytecode`: Opcode instruction set, Chunk with constant pool and jump patching, and Bytecode Compiler from Game IR.
+  - `crates/scratch-vm`: Stack-based Virtual Machine with fuel limit protection against infinite loops, and `VmRuntime` for running game events.
+  - CLI `scratch check` now verifies AST, Game IR, and Bytecode generation.
+  - CLI `scratch test` now executes headless game simulation via Bytecode VM.
+- 5 new unit tests across `scratch-language`, `scratch-bytecode`, and `scratch-vm` (Total tests: 18).
+
 ## [0.1.0] - 2026-09-16 (Session 001)
 ### Added
-- Git repository initialization with strict `.agent-context/` tracking and verification.
-- Rust multi-crate workspace setup:
-  - `crates/scratch-blocks`: Block Registry defining primitives, parameters, return types, docstrings, examples, and fuzzy suggestion matching.
-  - `crates/scratch-language`: Indentation-aware lexer, AST, recursive descent parser, and educational diagnostics.
-  - `crates/scratch-ir`: Engine-independent Game IR definitions and AST lowering with semantic validation.
-  - `crates/scratch-runtime`: Headless game state world, entity model, variables, event dispatcher, movement system, and collision system.
-  - `crates/scratch-project`: `project.schproj` YAML configuration management.
-  - `runtimes/native`: 1280x720 16:9 Bevy 0.15 native adapter with 2D camera, sprite sync, input translation, and headless simulation fallback.
-  - `apps/scratch-cli`: `scratch` CLI supporting `new`, `run`, `check`, and `test`.
-  - `examples/hello-game`: Complete working starter game.
-- 13 unit and integration tests covering lexer, parser, IR, runtime, project config, and native runner.
+- Git repository initialization with strict `.agent-context/` tracking.
+- Rust multi-crate workspace setup (`scratch-blocks`, `scratch-language`, `scratch-ir`, `scratch-runtime`, `scratch-project`, `runtimes/native`, `apps/scratch-cli`).
+- Milestone 1 vertical slice implementation.

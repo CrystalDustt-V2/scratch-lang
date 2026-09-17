@@ -1,11 +1,15 @@
 pub mod ast;
 pub mod diagnostics;
+pub mod formatter;
 pub mod lexer;
+pub mod linter;
 pub mod parser;
 
 pub use ast::*;
 pub use diagnostics::Diagnostic;
+pub use formatter::{format_source, Formatter};
 pub use lexer::{tokenize, LexerError, Token, TokenKind};
+pub use linter::{lint_source, Linter};
 pub use parser::{ParseError, Parser};
 
 pub fn parse(source: &str) -> Result<Program, String> {
@@ -17,6 +21,7 @@ pub fn parse(source: &str) -> Result<Program, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use scratch_blocks::BlockRegistry;
 
     #[test]
     fn test_parse_milestone1_program() {
@@ -92,5 +97,43 @@ when update:
             }
             _ => panic!("Expected if statement"),
         }
+    }
+
+    #[test]
+    fn test_formatter_roundtrip() {
+        let code = r#"when start:
+    score = 0
+
+when action.down("right"):
+    move(Player, 5)
+"#;
+        let formatted = format_source(code).expect("format ok");
+        assert_eq!(formatted.trim(), code.trim());
+    }
+
+    #[test]
+    fn test_linter_catches_typo() {
+        let code = r#"
+when start:
+    move(Plyer, 5)
+"#;
+        let registry = BlockRegistry::core();
+        let diags = lint_source(code, &registry).expect("lint ok");
+        assert_eq!(diags.len(), 1);
+        assert_eq!(diags[0].code, "SL001");
+        assert_eq!(diags[0].suggestion, Some("Player".to_string()));
+    }
+
+    #[test]
+    fn test_linter_catches_unknown_command() {
+        let code = r#"
+when start:
+    moove(Player, 5)
+"#;
+        let registry = BlockRegistry::core();
+        let diags = lint_source(code, &registry).expect("lint ok");
+        assert_eq!(diags.len(), 1);
+        assert_eq!(diags[0].code, "SL003");
+        assert_eq!(diags[0].suggestion, Some("move".to_string()));
     }
 }

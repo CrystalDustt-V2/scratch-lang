@@ -1,0 +1,16 @@
+[package]
+name = "scratch-vm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+scratch-blocks = { path = "../scratch-blocks" }
+scratch-bytecode = { path = "../scratch-bytecode" }
+scratch-ir = { path = "../scratch-ir" }
+scratch-runtime = { path = "../scratch-runtime" }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+scratch-language = { path = "../scratch-language" }

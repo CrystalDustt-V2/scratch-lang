@@ -1,53 +1,50 @@
 # Current State
 
-Last Updated: 2026-09-16 (Session 001)
+Last Updated: 2026-09-17 (Session 002)
 
 ## Current Phase
-Phase 1: Language Foundation & Vertical Slice (Milestone 1 Completed)
+Phase 2 & Phase 3: Developer Tooling (Formatter & Linter) and Bytecode VM (Completed)
 
 ## Implemented Features
-- **Git Repository & Agent Continuity System**: Full `.agent-context` protocol established and strictly tracked in git.
-- **Cargo Workspace Architecture**: Multi-crate decoupled architecture (`scratch-blocks`, `scratch-language`, `scratch-ir`, `scratch-runtime`, `scratch-project`, `runtimes/native`, `apps/scratch-cli`).
-- **Block Registry (`scratch-blocks`)**: Single source of truth for primitives (`move`, `jump`, `stop`, `teleport`, `touching`, `damage`, `heal`, `respawn`, `collect`, `sound.play`, `camera.follow`, `background.set`). Contains parameter specs, docstrings, examples, and Levenshtein suggestion helper for beginner error diagnostics.
+- **Git Repository & Agent Continuity System**: Full `.agent-context` protocol established, updated, and strictly tracked in git.
+- **Cargo Workspace Architecture**: Multi-crate decoupled architecture (`scratch-blocks`, `scratch-language`, `scratch-ir`, `scratch-bytecode`, `scratch-vm`, `scratch-runtime`, `scratch-project`, `runtimes/native`, `apps/scratch-cli`).
+- **Block Registry (`scratch-blocks`)**: Single source of truth for primitives, parameter typing, docstrings, examples, and Levenshtein suggestion matching.
 - **Language Frontend (`scratch-language`)**:
   - Indentation-aware lexer emitting virtual `Indent`, `Dedent`, `Newline` tokens with span tracking.
-  - Full AST covering events (`when start`, `when update`, `when action.down/press/up`, `when touches`, `every/after seconds`), statements (`Assign`, `Call`, `If`, `Repeat`, `Return`, `Assert`), and expressions with precedence.
-  - Recursive descent parser with clean block structuring.
-  - Educational diagnostic structure with line/column pointers and "Did you mean?" suggestions.
-- **Game IR (`scratch-ir`)**:
-  - Engine-independent intermediate representation (`IrProgram`, `IrEventHandler`, `IrInstruction`, `IrExpr`).
-  - AST to IR lowering with block validation and similarity checks.
-- **Headless Runtime (`scratch-runtime`)**:
-  - `World` entity model (`Entity`, `Transform2D`, `EntityId`, tags, visibility, color, size).
-  - Dynamic variable storage (`score`, `health`).
-  - Event dispatcher (`OnStart`, `OnUpdate`, `OnActionDown/Press/Up`, `OnTouches`).
-  - Movement system (`move`, `jump`, `stop`, `teleport`).
-  - Collision checking (AABB overlap).
-  - Headless tick simulation for automated game tests.
-- **Bevy Desktop Adapter (`runtimes/native`)**:
-  - 1280x720 16:9 native desktop window with white background.
-  - Bevy 0.15 2D camera & sprite synchronization.
-  - Physical keyboard mapping (Arrow keys & WASD to logical actions).
-  - Headless runner mode fallback for fast testing.
+  - Full AST covering events, statements, and expressions with precedence.
+  - Recursive descent parser with block structure.
+  - Educational diagnostic rendering with exact line/column carets and suggestions.
+  - **Deterministic Formatter (`format_source`)**: Canonical 4-space indentation, operator spacing, and event block separation.
+  - **Educational Linter (`lint_source`)**: Educational diagnostic rules (`SL001` unknown object, `SL002` unassigned variable, `SL003` unknown command, `SL004` parameter mismatch, `SL007` per-frame misuse, `SL008` non-positive loop count, `SL010` unknown input action).
+- **Game IR (`scratch-ir`)**: Intermediate Representation independent of Bevy/OS and AST lowering with block catalog validation.
+- **Bytecode & VM (`scratch-bytecode`, `scratch-vm`)**:
+  - Complete opcode instruction set (`OP_PUSH_CONST`, `OP_LOAD_VAR`, `OP_STORE_VAR`, `OP_ADD`, `OP_SUB`, `OP_MUL`, `OP_DIV`, `OP_MOD`, `OP_EQUAL`, `OP_NOT_EQUAL`, `OP_LESS`, `OP_GREATER`, `OP_AND`, `OP_OR`, `OP_NOT`, `OP_NEG`, `OP_JUMP`, `OP_JUMP_IF_FALSE`, `OP_CALL_BLOCK`, `OP_ASSERT`, `OP_HALT`).
+  - Bytecode Chunk format with constant pool and jump patching.
+  - Bytecode compiler lowering `IrProgram` to `BytecodeProgram`.
+  - Stack-based Virtual Machine (`Vm`) with step-fuel limits (100,000 instructions per tick) to prevent infinite loops from hanging the application.
+  - `VmRuntime` orchestrating input, collision, update, and start event bytecode chunks against `World`.
+- **Headless Runtime (`scratch-runtime`)**: World entity model, dynamic variable store, movement system, AABB collision detection, and event dispatcher.
+- **Bevy Desktop Adapter (`runtimes/native`)**: 1280x720 16:9 window, 2D camera, sprite sync, physical keyboard input translation, and headless simulation fallback.
 - **CLI (`scratch-cli`)**:
   - `scratch new <project>`: Scaffolds a full project layout.
   - `scratch run [path]`: Compiles and executes project.
-  - `scratch check [path]`: Verifies `.sch` syntax and lowering.
-  - `scratch test [path]`: Runs automated headless game simulation.
+  - `scratch check [path]`: Validates AST, Game IR, and Bytecode generation.
+  - `scratch lint [path]`: Lints `.sch` files with educational diagnostic carets.
+  - `scratch format [path]` (with `--check`): Deterministically formats source files.
+  - `scratch test [path]`: Runs automated headless game simulation via Bytecode VM.
 - **Example Game**: `examples/hello-game/` containing `project.schproj` and `src/main.sch`.
 
 ## Currently Modified Systems
-- Completed Milestone 1 vertical slice.
+- Completed Phase 2 (Developer Tooling: Formatter & Linter) and Phase 3 (Bytecode VM).
 
 ## Current Blockers
-- None. All 13 unit/integration tests pass.
+- None. All 18 unit/integration tests pass.
 
 ## Next Recommended Task
-- Phase 2: Game Primitives & Extended Features:
-  1. Add bytecode VM (`scratch-bytecode`, `scratch-vm`) compiler stage.
-  2. Implement `scratch format` formatter tool in `scratch-cli`.
-  3. Implement `scratch lint` with educational codes `SL001`-`SL010`.
-  4. Expand scene model (`.scene` files) in `scratch-scenes`.
+- Phase 4: Scenes & Asset Validation:
+  1. `scratch-scenes`: `.scene` file format parser and multi-scene switching (`scene.switch`, `scene.restart`).
+  2. `scratch-assets`: static verification of referenced sprite and sound files in `assets/`.
+  3. Temporal clock system (`every X seconds:`, `after X seconds:`).
 
 ## Test State
-- 13 passed, 0 failed, 0 warnings.
+- 18 passed, 0 failed, 0 warnings across all 8 workspace crates.
