@@ -11,6 +11,8 @@ use scratch_scenes::{SceneData, SceneManager};
 use scratch_vm::VmRuntime;
 use std::path::{Path, PathBuf};
 
+mod studio;
+
 #[derive(Parser)]
 #[command(name = "scratch")]
 #[command(about = "scratch-lang: Beginner-first, code-based 2D game platform", long_about = None)]
@@ -69,6 +71,17 @@ enum Commands {
         #[command(subcommand)]
         target: ExportTarget,
     },
+    /// Launch interactive in-browser Scratch Studio IDE and live playground
+    Studio {
+        /// Path to project directory or .sch file (defaults to current directory)
+        path: Option<PathBuf>,
+        /// Port to listen on (defaults to 8080)
+        #[arg(short, long, default_value_t = 8080)]
+        port: u16,
+        /// Do not open the default browser automatically
+        #[arg(long)]
+        no_open: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -78,6 +91,14 @@ enum ExportTarget {
         /// Path to project directory
         path: Option<PathBuf>,
         /// Output directory (defaults to dist/web)
+        #[arg(short, long)]
+        out: Option<PathBuf>,
+    },
+    /// Export standalone in-browser Scratch Studio IDE
+    Studio {
+        /// Path to project directory
+        path: Option<PathBuf>,
+        /// Output directory (defaults to dist/studio)
         #[arg(short, long)]
         out: Option<PathBuf>,
     },
@@ -153,7 +174,21 @@ fn main() {
                     std::process::exit(1);
                 }
             }
+            ExportTarget::Studio { path, out } => {
+                let target_path = path.unwrap_or_else(|| PathBuf::from("."));
+                if let Err(e) = export_studio(&target_path, out) {
+                    eprintln!("Export studio failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
         },
+        Commands::Studio { path, port, no_open } => {
+            let target_path = path.unwrap_or_else(|| PathBuf::from("."));
+            if let Err(e) = studio::start_studio(&target_path, port, no_open) {
+                eprintln!("Studio error: {}", e);
+                std::process::exit(1);
+            }
+        }
     }
 }
 
@@ -665,6 +700,47 @@ r#"<!DOCTYPE html>
     println!("   npx serve {}", web_dist_dir.display());
     println!("   or");
     println!("   python -m http.server -d {}", web_dist_dir.display());
+    println!("============================================================");
+
+    Ok(())
+}
+
+fn export_studio(path: &Path, out_dir: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
+    let (entry_path, config) = resolve_entry_file(path)?;
+    let proj_dir = if entry_path.is_file() {
+        entry_path.parent().and_then(|p| if p.ends_with("src") { p.parent() } else { Some(p) }).unwrap_or(Path::new("."))
+    } else {
+        path
+    };
+
+    let studio_dist_dir = out_dir.unwrap_or_else(|| proj_dir.join("dist/studio"));
+    if studio_dist_dir.exists() {
+        std::fs::remove_dir_all(&studio_dist_dir)?;
+    }
+    std::fs::create_dir_all(&studio_dist_dir)?;
+
+    println!("Exporting Scratch Studio for '{}'...", config.name);
+    let html = studio::render_studio_html(&config.name);
+    std::fs::write(studio_dist_dir.join("index.html"), html)?;
+
+    // Copy scenes & assets if they exist
+    let scenes_src = proj_dir.join("scenes");
+    if scenes_src.exists() {
+        copy_dir_recursive(&scenes_src, &studio_dist_dir.join("scenes"))?;
+    }
+    let assets_src = proj_dir.join("assets");
+    if assets_src.exists() {
+        copy_dir_recursive(&assets_src, &studio_dist_dir.join("assets"))?;
+    }
+
+    println!();
+    println!("============================================================");
+    println!(" Scratch Studio Export Succeeded!");
+    println!(" Studio Directory: {}", studio_dist_dir.display());
+    println!(" Preview locally with:");
+    println!("   scratch studio {}", proj_dir.display());
+    println!("   or");
+    println!("   python -m http.server -d {}", studio_dist_dir.display());
     println!("============================================================");
 
     Ok(())

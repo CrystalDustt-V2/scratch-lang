@@ -164,12 +164,14 @@ This document provides a comprehensive mapping of every single Scratch block fro
 | :--- | :--- | :--- | :--- |
 | `touching [sprite]?` | `touching(target, other)` | `Boolean` | AABB collider overlap check. |
 | `touching color [color]?` | `touching_color(target, color)` | `Boolean` | Color-based collision check. |
+| `color [color] is touching [color]?` | `color_touching_color(color1, color2)` | `Boolean` | Checks if any sprite of color1 touches sprite/stage of color2. |
 | `ask [question] and wait` | `ask(question)` | `Void` | Displays user prompt input dialogue. |
 | `answer` | `get_answer()` | `String` | Returns text input entered by user. |
 | `key [space] pressed?` | `key_pressed(key)` | `Boolean` | Polls if physical key or action is held down. |
 | `mouse down?` | `mouse_down()` | `Boolean` | Checks if left mouse button is pressed. |
 | `mouse x` | `mouse_x()` | `Number` | Returns current screen mouse X coordinate. |
 | `mouse y` | `mouse_y()` | `Number` | Returns current screen mouse Y coordinate. |
+| `loudness` | `get_loudness()` | `Number` | Returns audio microphone loudness level (0-100). |
 | `distance to [target]` | `distance_to(target, other)` | `Number` | Euclidean distance $\sqrt{\Delta x^2 + \Delta y^2}$. |
 | `timer` | `get_timer()` | `Number` | Elapsed seconds since game start or reset. |
 | `reset timer` | `reset_timer()` | `Void` | Resets game timer to zero. |

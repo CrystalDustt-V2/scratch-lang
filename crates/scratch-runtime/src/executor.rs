@@ -387,6 +387,208 @@ impl Executor {
                 let prop = args.get(1).and_then(|v| v.as_string()).unwrap_or("");
                 SensingSystem::property_of(world, target, prop)
             }
+            "mouse_x" => RuntimeValue::Number(world.mouse_pos.0 as f64),
+            "mouse_y" => RuntimeValue::Number(world.mouse_pos.1 as f64),
+            "mouse_down" => RuntimeValue::Bool(world.mouse_down),
+            "key_pressed" => {
+                let act = args.first().and_then(|v| v.as_string()).unwrap_or("");
+                RuntimeValue::Bool(world.input_actions_down.contains(act))
+            }
+            "get_timer" => {
+                let t = world.get_var("__runtime_timer").and_then(|v| v.as_number()).unwrap_or(0.0);
+                RuntimeValue::Number(t)
+            }
+            "random" => {
+                let min = args.first().and_then(|v| v.as_number()).unwrap_or(1.0);
+                let max = args.get(1).and_then(|v| v.as_number()).unwrap_or(10.0);
+                let seed = world.get_var("__random_seed").and_then(|v| v.as_number()).unwrap_or(12345.0);
+                let next_seed = (seed * 1103515245.0 + 12345.0) % 2147483648.0;
+                let ratio = next_seed / 2147483648.0;
+                let val = min + ratio * (max - min);
+                RuntimeValue::Number(val.round())
+            }
+            "math.round" => {
+                let n = args.first().and_then(|v| v.as_number()).unwrap_or(0.0);
+                RuntimeValue::Number(n.round())
+            }
+            "math.abs" => {
+                let n = args.first().and_then(|v| v.as_number()).unwrap_or(0.0);
+                RuntimeValue::Number(n.abs())
+            }
+            "math.sqrt" => {
+                let n = args.first().and_then(|v| v.as_number()).unwrap_or(0.0);
+                RuntimeValue::Number(if n < 0.0 { 0.0 } else { n.sqrt() })
+            }
+            "math.sin" => {
+                let deg = args.first().and_then(|v| v.as_number()).unwrap_or(0.0);
+                RuntimeValue::Number(deg.to_radians().sin())
+            }
+            "math.cos" => {
+                let deg = args.first().and_then(|v| v.as_number()).unwrap_or(0.0);
+                RuntimeValue::Number(deg.to_radians().cos())
+            }
+            "math.floor" => {
+                let n = args.first().and_then(|v| v.as_number()).unwrap_or(0.0);
+                RuntimeValue::Number(n.floor())
+            }
+            "math.ceil" => {
+                let n = args.first().and_then(|v| v.as_number()).unwrap_or(0.0);
+                RuntimeValue::Number(n.ceil())
+            }
+            "math.tan" => {
+                let deg = args.first().and_then(|v| v.as_number()).unwrap_or(0.0);
+                RuntimeValue::Number(deg.to_radians().tan())
+            }
+            "math.asin" => {
+                let n = args.first().and_then(|v| v.as_number()).unwrap_or(0.0);
+                RuntimeValue::Number(n.clamp(-1.0, 1.0).asin().to_degrees())
+            }
+            "math.acos" => {
+                let n = args.first().and_then(|v| v.as_number()).unwrap_or(0.0);
+                RuntimeValue::Number(n.clamp(-1.0, 1.0).acos().to_degrees())
+            }
+            "math.atan" => {
+                let n = args.first().and_then(|v| v.as_number()).unwrap_or(0.0);
+                RuntimeValue::Number(n.atan().to_degrees())
+            }
+            "math.ln" => {
+                let n = args.first().and_then(|v| v.as_number()).unwrap_or(1.0);
+                RuntimeValue::Number(if n > 0.0 { n.ln() } else { 0.0 })
+            }
+            "math.log" => {
+                let n = args.first().and_then(|v| v.as_number()).unwrap_or(1.0);
+                RuntimeValue::Number(if n > 0.0 { n.log10() } else { 0.0 })
+            }
+            "math.exp" => {
+                let n = args.first().and_then(|v| v.as_number()).unwrap_or(0.0);
+                RuntimeValue::Number(n.exp())
+            }
+            "math.pow" => {
+                let base = args.first().and_then(|v| v.as_number()).unwrap_or(1.0);
+                let exp = args.get(1).and_then(|v| v.as_number()).unwrap_or(1.0);
+                RuntimeValue::Number(base.powf(exp))
+            }
+            "math.mod" => {
+                let a = args.first().and_then(|v| v.as_number()).unwrap_or(0.0);
+                let b = args.get(1).and_then(|v| v.as_number()).unwrap_or(1.0);
+                RuntimeValue::Number(if b == 0.0 { 0.0 } else { a % b })
+            }
+            "math.min" => {
+                let a = args.first().and_then(|v| v.as_number()).unwrap_or(0.0);
+                let b = args.get(1).and_then(|v| v.as_number()).unwrap_or(0.0);
+                RuntimeValue::Number(a.min(b))
+            }
+            "math.max" => {
+                let a = args.first().and_then(|v| v.as_number()).unwrap_or(0.0);
+                let b = args.get(1).and_then(|v| v.as_number()).unwrap_or(0.0);
+                RuntimeValue::Number(a.max(b))
+            }
+            "text.join" => {
+                let a = args.first().map(|v| v.to_string()).unwrap_or_default();
+                let b = args.get(1).map(|v| v.to_string()).unwrap_or_default();
+                RuntimeValue::String(format!("{}{}", a, b))
+            }
+            "text.length" => {
+                let s = args.first().and_then(|v| v.as_string()).unwrap_or("");
+                RuntimeValue::Number(s.chars().count() as f64)
+            }
+            "text.contains" => {
+                let s = args.first().and_then(|v| v.as_string()).unwrap_or("");
+                let sub = args.get(1).and_then(|v| v.as_string()).unwrap_or("");
+                RuntimeValue::Bool(s.contains(sub))
+            }
+            "text.letter_at" => {
+                let s = args.first().and_then(|v| v.as_string()).unwrap_or("");
+                let idx = args.get(1).and_then(|v| v.as_number()).unwrap_or(1.0) as usize;
+                if idx == 0 {
+                    RuntimeValue::String(String::new())
+                } else if let Some(ch) = s.chars().nth(idx - 1) {
+                    RuntimeValue::String(ch.to_string())
+                } else {
+                    RuntimeValue::String(String::new())
+                }
+            }
+            "text.upper" => {
+                let s = args.first().and_then(|v| v.as_string()).unwrap_or("");
+                RuntimeValue::String(s.to_uppercase())
+            }
+            "text.lower" => {
+                let s = args.first().and_then(|v| v.as_string()).unwrap_or("");
+                RuntimeValue::String(s.to_lowercase())
+            }
+            "sound.get_volume" => {
+                let cur = world.get_var("__master_volume").and_then(|v| v.as_number()).unwrap_or(100.0);
+                RuntimeValue::Number(cur)
+            }
+            "music.get_tempo" => {
+                let bpm = world.get_var("__music_tempo").and_then(|v| v.as_number()).unwrap_or(60.0);
+                RuntimeValue::Number(bpm)
+            }
+            "current_time" => {
+                let unit = args.first().and_then(|v| v.as_string()).unwrap_or("second");
+                let dur = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
+                let total_secs = dur.as_secs();
+                let val = match unit.to_lowercase().as_str() {
+                    "second" | "seconds" => (total_secs % 60) as f64,
+                    "minute" | "minutes" => ((total_secs / 60) % 60) as f64,
+                    "hour" | "hours" => ((total_secs / 3600) % 24) as f64,
+                    "day_of_week" => (((total_secs / 86400) + 4) % 7 + 1) as f64,
+                    "days" | "date" => {
+                        let days_since_1970 = total_secs / 86400;
+                        ((days_since_1970 % 30) + 1) as f64
+                    }
+                    "month" => {
+                        let days_since_1970 = total_secs / 86400;
+                        (((days_since_1970 / 30) % 12) + 1) as f64
+                    }
+                    "year" => {
+                        let years = 1970 + total_secs / (86400 * 365);
+                        years as f64
+                    }
+                    _ => 0.0,
+                };
+                RuntimeValue::Number(val)
+            }
+            "days_since_2000" => {
+                let dur = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
+                let secs_since_1970 = dur.as_secs() as f64;
+                let secs_from_1970_to_2000 = 946684800.0;
+                let days = (secs_since_1970 - secs_from_1970_to_2000) / 86400.0;
+                RuntimeValue::Number(days.max(0.0))
+            }
+            "get_username" => {
+                RuntimeValue::String("scratch_dev".to_string())
+            }
+            "distance_to" => {
+                let target_a = args.first().and_then(|v| v.as_string()).unwrap_or("");
+                let target_b = args.get(1).and_then(|v| v.as_string()).unwrap_or("");
+                if let (Some(a), Some(b)) = (
+                    world.get_entity_by_name(target_a),
+                    world.get_entity_by_name(target_b),
+                ) {
+                    let dx = (a.transform.x - b.transform.x) as f64;
+                    let dy = (a.transform.y - b.transform.y) as f64;
+                    RuntimeValue::Number((dx * dx + dy * dy).sqrt())
+                } else {
+                    RuntimeValue::Number(0.0)
+                }
+            }
+            "get_direction" => {
+                let target = args.first().and_then(|v| v.as_string()).unwrap_or("");
+                let rot = world.get_entity_by_name(target).map(|e| e.transform.rotation as f64).unwrap_or(0.0);
+                RuntimeValue::Number(rot)
+            }
+            "get_size" => {
+                let target = args.first().and_then(|v| v.as_string()).unwrap_or("");
+                let sz = world.get_entity_by_name(target).map(|e| (e.transform.scale_x * 100.0).round() as f64).unwrap_or(100.0);
+                RuntimeValue::Number(sz)
+            }
+            "get_costume_number" => {
+                RuntimeValue::Number(1.0)
+            }
+            "get_backdrop_name" => {
+                RuntimeValue::String(world.background.clone())
+            }
             _ => RuntimeValue::Nil,
         }
     }
