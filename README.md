@@ -611,6 +611,14 @@ scratch run examples/platformer
 
 ---
 
+## Documentation
+
+- [**Master Blocks Catalog & Status Tracker**](docs/SCRATCH_MASTER_BLOCKS_CATALOG.md): Complete specification tracking all 124 Scratch 3.0 blocks, opcodes, syntax mappings, and 80+ extension blocks.
+- [**Scratch Blocks Quick Reference**](docs/SCRATCH_BLOCKS_REFERENCE.md): Side-by-side cheat sheet mapping Harvard Scratch blocks to scratch-lang syntax.
+- [**CLI Command Reference**](docs/CLI_REFERENCE.md): Full command-line interface documentation for all subcommands, profile management, and desktop GUI flags.
+
+---
+
 ## License
 
 Licensed under either of:
