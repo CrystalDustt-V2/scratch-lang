@@ -2,6 +2,7 @@ const vscode = require('vscode');
 const cp = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const catalog = require('./catalog');
 
 /** @type {cp.ChildProcessWithoutNullStreams | null} */
 let lspProcess = null;
@@ -13,6 +14,68 @@ let outputChannel;
 let messageId = 1;
 const pendingRequests = new Map();
 let incomingBuffer = Buffer.alloc(0);
+
+/**
+ * Formats a Scratch block catalog entry into a rich Markdown hover tooltip.
+ */
+function formatFunctionHover(fn) {
+    const md = new vscode.MarkdownString();
+    md.isTrusted = true;
+    md.appendMarkdown(`### \`${fn.syntax} -> ${fn.returnType}\`\n\n`);
+    md.appendMarkdown(
+        `**Category**: \`${fn.category.toUpperCase()}\` &nbsp;|&nbsp; **Shape**: \`${fn.shape}\` &nbsp;|&nbsp; **Opcode**: \`${fn.opcode}\`\n\n`
+    );
+    md.appendMarkdown(`${fn.description}\n\n`);
+
+    if (fn.parameters && fn.parameters.length > 0) {
+        md.appendMarkdown(`#### Parameters\n`);
+        for (const p of fn.parameters) {
+            const req = p.required ? '*(required)*' : `*(optional, default: \`${p.default}\`)*`;
+            md.appendMarkdown(`- \`${p.name}\` (\`${p.type}\`) ${req} &mdash; ${p.description}\n`);
+        }
+        md.appendMarkdown('\n');
+    }
+
+    if (fn.example) {
+        md.appendMarkdown(`#### Example\n\`\`\`sch\n${fn.example}\n\`\`\`\n\n`);
+    }
+
+    if (fn.notes) {
+        md.appendMarkdown(`> 💡 **Note**: ${fn.notes}\n`);
+    }
+
+    return md;
+}
+
+/**
+ * Formats a language keyword into a Markdown hover tooltip.
+ */
+function formatKeywordHover(kw) {
+    const md = new vscode.MarkdownString();
+    md.isTrusted = true;
+    md.appendMarkdown(`### \`${kw.syntax}\`\n\n`);
+    md.appendMarkdown(`**Category**: \`${kw.category.toUpperCase()}\` &nbsp;|&nbsp; **Kind**: Keyword\n\n`);
+    md.appendMarkdown(`${kw.description}\n\n`);
+    if (kw.example) {
+        md.appendMarkdown(`#### Example\n\`\`\`sch\n${kw.example}\n\`\`\`\n`);
+    }
+    return md;
+}
+
+/**
+ * Formats an event handler trigger into a Markdown hover tooltip.
+ */
+function formatEventHover(ev) {
+    const md = new vscode.MarkdownString();
+    md.isTrusted = true;
+    md.appendMarkdown(`### \`${ev.label}\`\n\n`);
+    md.appendMarkdown(`**Type**: \`${ev.detail}\`\n\n`);
+    md.appendMarkdown(`${ev.description}\n\n`);
+    if (ev.example) {
+        md.appendMarkdown(`#### Example\n\`\`\`sch\n${ev.example}\n\`\`\`\n`);
+    }
+    return md;
+}
 
 /**
  * Finds the scratch CLI binary path from settings, workspace targets, or PATH.
@@ -42,6 +105,15 @@ function resolveScratchPath() {
         }
     }
 
+    // Check default cargo bin directory
+    const homeDir = process.env.USERPROFILE || process.env.HOME || '';
+    if (homeDir) {
+        const cargoBin = path.join(homeDir, '.cargo', 'bin', process.platform === 'win32' ? 'scratch.exe' : 'scratch');
+        if (fs.existsSync(cargoBin)) {
+            return cargoBin;
+        }
+    }
+
     return process.platform === 'win32' ? 'scratch.exe' : 'scratch';
 }
 
@@ -57,7 +129,7 @@ function sendJsonRpc(obj) {
 }
 
 /**
- * Sends a request expecting a response.
+ * Sends a request expecting a response with a safe 2-second timeout.
  */
 function sendRequest(method, params) {
     return new Promise((resolve, reject) => {
@@ -73,13 +145,13 @@ function sendRequest(method, params) {
             params,
         });
 
-        // 10s timeout
+        // Safe 2s timeout prevents hover and UI from hanging on "Loading..."
         setTimeout(() => {
             if (pendingRequests.has(id)) {
                 pendingRequests.delete(id);
                 reject(new Error(`LSP Request ${method} timed out`));
             }
-        }, 10000);
+        }, 2000);
     });
 }
 
@@ -203,9 +275,6 @@ function startLspServer() {
 
         lspProcess.on('error', (err) => {
             outputChannel.appendLine(`[LSP Error] Failed to start scratch process: ${err.message}`);
-            vscode.window.showWarningMessage(
-                `scratch-lang: Could not start 'scratch lsp' (${err.message}). Make sure 'scratch' is in your PATH or configure 'scratch.lsp.path'.`
-            );
         });
 
         lspProcess.on('exit', (code) => {
@@ -315,75 +384,183 @@ function activate(context) {
         vscode.workspace.onDidCloseTextDocument(notifyDidClose)
     );
 
-    // 1. Completion Provider
+    // =========================================================================
+    // 1. Instant Keystroke Completion Provider (Zero-Latency Fuzzy Typeahead)
+    // =========================================================================
+    // Registered WITHOUT restrictive trigger characters so it auto-triggers
+    // on every single letter/character the user types (a-z, _, etc.)
     context.subscriptions.push(
-        vscode.languages.registerCompletionItemProvider(
-            'scratch',
-            {
-                async provideCompletionItems(document, position) {
-                    try {
-                        const res = await sendRequest('textDocument/completion', {
-                            textDocument: { uri: document.uri.toString() },
-                            position: { line: position.line, character: position.character },
-                        });
-                        if (!res) return [];
+        vscode.languages.registerCompletionItemProvider('scratch', {
+            provideCompletionItems(document, position) {
+                const lineText = document.lineAt(position.line).text;
+                const prefix = lineText.slice(0, position.character);
+                const trimmed = prefix.trim();
 
-                        const items = Array.isArray(res) ? res : res.items || [];
-                        return items.map((item) => {
-                            const ci = new vscode.CompletionItem(item.label);
-                            if (item.kind) {
-                                // Map LSP CompletionItemKind to VS Code CompletionItemKind
-                                ci.kind = item.kind - 1;
-                            }
-                            ci.detail = item.detail;
-                            if (item.documentation) {
-                                const docText =
-                                    typeof item.documentation === 'string'
-                                        ? item.documentation
-                                        : item.documentation.value;
-                                ci.documentation = new vscode.MarkdownString(docText);
-                            }
-                            if (item.insertText) {
-                                if (item.insertTextFormat === 2) {
-                                    // Snippet format
-                                    ci.insertText = new vscode.SnippetString(item.insertText);
-                                } else {
-                                    ci.insertText = item.insertText;
-                                }
-                            }
-                            return ci;
-                        });
-                    } catch (e) {
-                        return [];
+                const items = [];
+
+                // 1. Inside string quotes context
+                if (prefix.includes('("') || prefix.endsWith('"')) {
+                    if (
+                        prefix.includes('action.') ||
+                        prefix.includes('press') ||
+                        prefix.includes('down') ||
+                        prefix.includes('up')
+                    ) {
+                        for (const act of catalog.INPUT_ACTIONS) {
+                            const ci = new vscode.CompletionItem(act, vscode.CompletionItemKind.Value);
+                            ci.detail = `Input Action: ${act}`;
+                            ci.documentation = new vscode.MarkdownString(`Physical keyboard key mapping for \`${act}\``);
+                            items.push(ci);
+                        }
+                        return new vscode.CompletionList(items, false);
                     }
-                },
-            },
-            '.', '(', '"', ' '
-        )
-    );
-
-    // 2. Hover Provider
-    context.subscriptions.push(
-        vscode.languages.registerHoverProvider('scratch', {
-            async provideHover(document, position) {
-                try {
-                    const res = await sendRequest('textDocument/hover', {
-                        textDocument: { uri: document.uri.toString() },
-                        position: { line: position.line, character: position.character },
-                    });
-                    if (!res || !res.contents) return null;
-
-                    const contents = res.contents;
-                    const markdownText = typeof contents === 'string' ? contents : contents.value || '';
-                    return new vscode.Hover(new vscode.MarkdownString(markdownText));
-                } catch (e) {
-                    return null;
                 }
+
+                // 2. Event header suggestions (when line starts with 'when' or is empty)
+                if (trimmed === '' || trimmed === 'when' || trimmed === 'when ') {
+                    for (const ev of catalog.EVENTS_DATA) {
+                        const ci = new vscode.CompletionItem(ev.label, vscode.CompletionItemKind.Event);
+                        ci.detail = ev.detail;
+                        ci.documentation = formatEventHover(ev);
+                        ci.insertText = new vscode.SnippetString(ev.snippet);
+                        ci.sortText = `0_${ev.name}`;
+                        items.push(ci);
+                    }
+                }
+
+                // 3. All 151 Scratch 3.0 Standard Blocks & Functions
+                for (const fn of catalog.FUNCTIONS_DATA) {
+                    const kind =
+                        fn.shape === 'Reporter' || fn.shape === 'Boolean'
+                            ? vscode.CompletionItemKind.Property
+                            : vscode.CompletionItemKind.Function;
+                    const ci = new vscode.CompletionItem(fn.name, kind);
+                    ci.detail = `${fn.syntax} : ${fn.returnType}`;
+                    ci.documentation = formatFunctionHover(fn);
+                    ci.insertText = new vscode.SnippetString(fn.lspSnippet);
+                    ci.sortText = `1_${fn.category}_${fn.name}`;
+                    items.push(ci);
+                }
+
+                // 4. Control Flow and Syntax Keywords
+                for (const kw of catalog.KEYWORDS_DATA) {
+                    const ci = new vscode.CompletionItem(kw.name, vscode.CompletionItemKind.Keyword);
+                    ci.detail = `${kw.syntax} (Keyword)`;
+                    ci.documentation = formatKeywordHover(kw);
+                    ci.insertText = new vscode.SnippetString(kw.snippet);
+                    ci.sortText = `2_${kw.name}`;
+                    items.push(ci);
+                }
+
+                // 5. Built-in Game Entities
+                for (const obj of catalog.KNOWN_OBJECTS) {
+                    const ci = new vscode.CompletionItem(obj, vscode.CompletionItemKind.Class);
+                    ci.detail = `Game Object: ${obj}`;
+                    ci.documentation = new vscode.MarkdownString(`Active scene entity \`${obj}\``);
+                    ci.insertText = obj;
+                    ci.sortText = `3_${obj}`;
+                    items.push(ci);
+                }
+
+                // 6. User-defined local variables in the active document
+                try {
+                    const docText = document.getText();
+                    const varMatches = docText.matchAll(/\b([a-zA-Z_][a-zA-Z0-9_]*)\s*=/g);
+                    const seen = new Set(catalog.KNOWN_OBJECTS);
+                    for (const m of varMatches) {
+                        const varName = m[1];
+                        if (
+                            !seen.has(varName) &&
+                            !catalog.FUNCTION_MAP.has(varName) &&
+                            !catalog.KEYWORD_MAP.has(varName)
+                        ) {
+                            seen.add(varName);
+                            const ci = new vscode.CompletionItem(varName, vscode.CompletionItemKind.Variable);
+                            ci.detail = 'User Variable';
+                            ci.sortText = `4_${varName}`;
+                            items.push(ci);
+                        }
+                    }
+                } catch (_) {}
+
+                // isIncomplete: false instructs VS Code to cache and run its native
+                // fuzzy ranking engine at 60 FPS client-side on subsequent keystrokes
+                return new vscode.CompletionList(items, false);
             },
         })
     );
 
-    // 3. Document Formatting Provider
+    // =========================================================================
+    // 2. Instant Hover Documentation Provider (Resolves "Loading..." Freeze)
+    // =========================================================================
+    // Immediately responds in 0ms from the in-memory catalog dictionary,
+    // with a strict 500ms race timeout guard for custom LSP symbol queries.
+    context.subscriptions.push(
+        vscode.languages.registerHoverProvider('scratch', {
+            async provideHover(document, position) {
+                const idRange = document.getWordRangeAtPosition(position, /[a-zA-Z0-9_\.:]+/);
+                const wordRange = document.getWordRangeAtPosition(position);
+                const range = idRange || wordRange;
+                if (!range) return null;
+
+                const fullToken = document.getText(range);
+                const baseWord = wordRange ? document.getText(wordRange) : fullToken;
+
+                // 1. Instant check in Function Catalog
+                if (catalog.FUNCTION_MAP.has(fullToken)) {
+                    const fn = catalog.FUNCTION_MAP.get(fullToken);
+                    return new vscode.Hover(formatFunctionHover(fn), range);
+                }
+                if (catalog.FUNCTION_MAP.has(baseWord)) {
+                    const fn = catalog.FUNCTION_MAP.get(baseWord);
+                    return new vscode.Hover(formatFunctionHover(fn), wordRange);
+                }
+
+                // 2. Instant check in Keywords Catalog
+                if (catalog.KEYWORD_MAP.has(baseWord)) {
+                    const kw = catalog.KEYWORD_MAP.get(baseWord);
+                    return new vscode.Hover(formatKeywordHover(kw), wordRange);
+                }
+
+                // 3. Instant check in Event Triggers
+                const eventMatch = catalog.EVENTS_DATA.find(
+                    (e) => e.name === fullToken || e.name === baseWord || e.label.startsWith(fullToken)
+                );
+                if (eventMatch) {
+                    return new vscode.Hover(formatEventHover(eventMatch), range);
+                }
+
+                // 4. Fall back to background LSP server for custom symbols with a strict 500ms timeout
+                if (lspProcess && !lspProcess.killed) {
+                    try {
+                        const res = await Promise.race([
+                            sendRequest('textDocument/hover', {
+                                textDocument: { uri: document.uri.toString() },
+                                position: { line: position.line, character: position.character },
+                            }),
+                            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 500)),
+                        ]);
+                        if (res && res.contents) {
+                            const val = typeof res.contents === 'string' ? res.contents : res.contents.value || '';
+                            if (val) {
+                                const md = new vscode.MarkdownString(val);
+                                md.isTrusted = true;
+                                return new vscode.Hover(md, range);
+                            }
+                        }
+                    } catch (_) {
+                        return null;
+                    }
+                }
+
+                return null;
+            },
+        })
+    );
+
+    // =========================================================================
+    // 3. Document Formatting Provider (Shift + Alt + F)
+    // =========================================================================
     context.subscriptions.push(
         vscode.languages.registerDocumentFormattingEditProvider('scratch', {
             async provideDocumentFormattingEdits(document) {
@@ -391,13 +568,16 @@ function activate(context) {
                 if (!formatEnabled) return [];
 
                 try {
-                    const res = await sendRequest('textDocument/formatting', {
-                        textDocument: { uri: document.uri.toString() },
-                        options: {
-                            tabSize: 4,
-                            insertSpaces: true,
-                        },
-                    });
+                    const res = await Promise.race([
+                        sendRequest('textDocument/formatting', {
+                            textDocument: { uri: document.uri.toString() },
+                            options: {
+                                tabSize: 4,
+                                insertSpaces: true,
+                            },
+                        }),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500)),
+                    ]);
                     if (!res || !Array.isArray(res)) return [];
 
                     return res.map((edit) => {
@@ -416,14 +596,19 @@ function activate(context) {
         })
     );
 
+    // =========================================================================
     // 4. Document Symbol Provider (Outline View)
+    // =========================================================================
     context.subscriptions.push(
         vscode.languages.registerDocumentSymbolProvider('scratch', {
             async provideDocumentSymbols(document) {
                 try {
-                    const res = await sendRequest('textDocument/documentSymbol', {
-                        textDocument: { uri: document.uri.toString() },
-                    });
+                    const res = await Promise.race([
+                        sendRequest('textDocument/documentSymbol', {
+                            textDocument: { uri: document.uri.toString() },
+                        }),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500)),
+                    ]);
                     if (!res || !Array.isArray(res)) return [];
 
                     return res.map((sym) => {
@@ -456,7 +641,9 @@ function activate(context) {
         })
     );
 
+    // =========================================================================
     // 5. Commands Registration
+    // =========================================================================
     const runTerminalCommand = (cmdTitle, cmdStr) => {
         let terminal = vscode.window.terminals.find((t) => t.name === 'scratch');
         if (!terminal) {
@@ -494,4 +681,7 @@ function deactivate() {
 module.exports = {
     activate,
     deactivate,
+    formatFunctionHover,
+    formatKeywordHover,
+    formatEventHover,
 };

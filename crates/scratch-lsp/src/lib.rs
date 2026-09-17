@@ -218,4 +218,63 @@ mod tests {
         let msg2: ResponseMessage = serde_json::from_str(&msg2_str).unwrap();
         assert_eq!(msg2.id, Some(Id::Number(11)));
     }
+
+    #[test]
+    fn test_lsp_uri_normalization() {
+        let mut server = LspServer::new();
+        // Document opened with lowercase drive letter
+        server.handle_notification(NotificationMessage {
+            jsonrpc: "2.0".to_string(),
+            method: "textDocument/didOpen".to_string(),
+            params: Some(json!({
+                "textDocument": {
+                    "uri": "file:///c:/project/main.sch",
+                    "version": 1,
+                    "text": "when start:\n    move(Player, 10)\n"
+                }
+            })),
+        });
+
+        // Hover requested with encoded/uppercase drive letter: file:///C%3A/project/main.sch
+        let req = RequestMessage {
+            jsonrpc: "2.0".to_string(),
+            id: Id::Number(99),
+            method: "textDocument/hover".to_string(),
+            params: Some(json!({
+                "textDocument": { "uri": "file:///C%3A/project/main.sch" },
+                "position": { "line": 1, "character": 4 }
+            })),
+        };
+
+        let resp = server.handle_request(req);
+        assert_eq!(resp.id, Some(Id::Number(99)));
+        let hover: Option<Hover> = serde_json::from_value(resp.result.unwrap()).unwrap();
+        assert!(hover.is_some());
+    }
+
+    #[test]
+    fn test_lsp_malformed_request_with_id_returns_error_response() {
+        use std::io::Cursor;
+
+        let mut server = LspServer::new();
+        // Request missing "method" but has "id"
+        let bad_req = json!({
+            "jsonrpc": "2.0",
+            "id": 42
+        }).to_string();
+
+        let mut input_bytes = Vec::new();
+        write_message(&mut input_bytes, &bad_req).unwrap();
+
+        let reader = Cursor::new(input_bytes);
+        let mut output = Vec::new();
+
+        server.run(reader, &mut output).unwrap();
+
+        let mut out_reader = Cursor::new(output);
+        let msg_str = read_message(&mut out_reader).unwrap().expect("Expected error response");
+        let msg: ResponseMessage = serde_json::from_str(&msg_str).unwrap();
+        assert_eq!(msg.id, Some(Id::Number(42)));
+        assert!(msg.error.is_some());
+    }
 }

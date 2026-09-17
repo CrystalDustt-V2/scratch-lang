@@ -1,6 +1,6 @@
 use crate::analysis::{Analyzer, Document};
 use crate::protocol::{
-    read_message, write_message, CompletionItem, Diagnostic, DocumentSymbol, Hover,
+    read_message, write_message, CompletionItem, Diagnostic, DocumentSymbol, Hover, Id,
     NotificationMessage, Position, PublishDiagnosticsParams, RequestMessage, ResponseError,
     ResponseMessage, TextEdit,
 };
@@ -63,11 +63,27 @@ impl LspServer {
                 }
             };
 
-            if parsed.get("id").is_some() {
+            if let Some(id_val) = parsed.get("id") {
                 // Request
-                if let Ok(req) = serde_json::from_value::<RequestMessage>(parsed) {
-                    let resp = self.handle_request(req);
-                    write_message(&mut writer, &serde_json::to_string(&resp)?)?;
+                let parsed_id = serde_json::from_value::<Id>(id_val.clone()).ok();
+                match serde_json::from_value::<RequestMessage>(parsed) {
+                    Ok(req) => {
+                        let resp = self.handle_request(req);
+                        write_message(&mut writer, &serde_json::to_string(&resp)?)?;
+                    }
+                    Err(e) => {
+                        let err_resp = ResponseMessage {
+                            jsonrpc: "2.0".to_string(),
+                            id: parsed_id,
+                            result: None,
+                            error: Some(ResponseError {
+                                code: -32600,
+                                message: format!("Invalid Request: {}", e),
+                                data: None,
+                            }),
+                        };
+                        write_message(&mut writer, &serde_json::to_string(&err_resp)?)?;
+                    }
                 }
             } else {
                 // Notification
@@ -125,7 +141,7 @@ impl LspServer {
                 let line = params["position"]["line"].as_u64().unwrap_or(0) as u32;
                 let character = params["position"]["character"].as_u64().unwrap_or(0) as u32;
 
-                let completions: Vec<CompletionItem> = if let Some(doc) = self.documents.get(uri) {
+                let completions: Vec<CompletionItem> = if let Some(doc) = self.get_document(uri) {
                     self.analyzer.compute_completions(doc, Position { line, character })
                 } else {
                     Vec::new()
@@ -144,7 +160,7 @@ impl LspServer {
                 let line = params["position"]["line"].as_u64().unwrap_or(0) as u32;
                 let character = params["position"]["character"].as_u64().unwrap_or(0) as u32;
 
-                let hover_opt: Option<Hover> = if let Some(doc) = self.documents.get(uri) {
+                let hover_opt: Option<Hover> = if let Some(doc) = self.get_document(uri) {
                     self.analyzer.compute_hover(doc, Position { line, character })
                 } else {
                     None
@@ -161,7 +177,7 @@ impl LspServer {
                 let params = req.params.unwrap_or(Value::Null);
                 let uri = params["textDocument"]["uri"].as_str().unwrap_or("");
 
-                let edits: Vec<TextEdit> = if let Some(doc) = self.documents.get(uri) {
+                let edits: Vec<TextEdit> = if let Some(doc) = self.get_document(uri) {
                     self.analyzer.format_document(doc).unwrap_or_default()
                 } else {
                     Vec::new()
@@ -178,7 +194,7 @@ impl LspServer {
                 let params = req.params.unwrap_or(Value::Null);
                 let uri = params["textDocument"]["uri"].as_str().unwrap_or("");
 
-                let symbols: Vec<DocumentSymbol> = if let Some(doc) = self.documents.get(uri) {
+                let symbols: Vec<DocumentSymbol> = if let Some(doc) = self.get_document(uri) {
                     self.analyzer.compute_document_symbols(doc)
                 } else {
                     Vec::new()
@@ -202,6 +218,17 @@ impl LspServer {
                 }),
             },
         }
+    }
+
+    pub fn get_document(&self, uri: &str) -> Option<&Document> {
+        if let Some(doc) = self.documents.get(uri) {
+            return Some(doc);
+        }
+        let norm = normalize_uri(uri);
+        self.documents
+            .iter()
+            .find(|(k, _)| normalize_uri(k) == norm)
+            .map(|(_, doc)| doc)
     }
 
     pub fn handle_notification(&mut self, notif: NotificationMessage) -> Option<Vec<NotificationMessage>> {
@@ -239,7 +266,8 @@ impl LspServer {
             "textDocument/didClose" => {
                 let params = notif.params?;
                 let uri = params["textDocument"]["uri"].as_str()?;
-                self.documents.remove(uri);
+                let norm = normalize_uri(uri);
+                self.documents.retain(|k, _| normalize_uri(k) != norm);
                 None
             }
             _ => None,
@@ -258,4 +286,11 @@ impl LspServer {
             params: Some(serde_json::to_value(params).unwrap_or(Value::Null)),
         }
     }
+}
+
+fn normalize_uri(uri: &str) -> String {
+    uri.replace("%3A", ":")
+        .replace("%3a", ":")
+        .replace("%20", " ")
+        .to_lowercase()
 }
