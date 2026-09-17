@@ -175,7 +175,7 @@ pub enum ProjectSubcommand {
         /// Target project directory
         path: Option<PathBuf>,
     },
-    /// Launch interactive in-browser Scratch Studio IDE & live playground
+    /// Launch interactive native Scratch Studio Desktop IDE
     Studio {
         path: Option<PathBuf>,
         #[arg(short, long, default_value_t = 8080)]
