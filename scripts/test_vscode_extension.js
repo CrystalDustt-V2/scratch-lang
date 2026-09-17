@@ -156,13 +156,25 @@ async function runTests() {
     assert.strictEqual(compList.isIncomplete, false, 'isIncomplete must be false so VS Code uses native client-side fuzzy ranking');
     assert(compList.items.length >= 150, `Expected at least 150 completion items, got ${compList.items.length}`);
 
-    const moveItem = compList.items.find((i) => i.label === 'move');
+    const moveItem = compList.items.find(
+        (i) => i.label === 'move' || (i.label && i.label.label === 'move')
+    );
     assert(moveItem, 'Must contain "move" completion item');
+    assert(moveItem.label.detail.includes('(target, steps'), 'Item detail in popup row must show parameters');
+    assert(moveItem.label.description.includes('motion • Stack'), 'Item description on right must show category and shape');
     assert.strictEqual(moveItem.insertText.value, 'move("${1:Player}", ${2:10})', 'Snippet must place cursor at parameters');
 
-    const scoreItem = compList.items.find((i) => i.label === 'score');
+    const whenItem = compList.items.find(
+        (i) => i.label === 'when' || (i.label && i.label.label === 'when')
+    );
+    assert(whenItem, 'Must contain "when" keyword item');
+    assert.strictEqual(whenItem.kind, mockVscode.CompletionItemKind.Keyword);
+
+    const scoreItem = compList.items.find(
+        (i) => i.label === 'score' || (i.label && i.label.label === 'score')
+    );
     assert(scoreItem, 'Must contain local user variable "score"');
-    console.log(`   OK! Completion provider returned ${compList.items.length} items with isIncomplete: false.`);
+    console.log(`   OK! Completion provider returned ${compList.items.length} items with CompletionItemLabel formatting.`);
 
     console.log('5. Deactivating...');
     ext.deactivate();

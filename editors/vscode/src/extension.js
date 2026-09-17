@@ -407,9 +407,17 @@ function activate(context) {
                         prefix.includes('up')
                     ) {
                         for (const act of catalog.INPUT_ACTIONS) {
-                            const ci = new vscode.CompletionItem(act, vscode.CompletionItemKind.Value);
+                            const ci = new vscode.CompletionItem(
+                                {
+                                    label: act,
+                                    detail: ' (key mapping)',
+                                    description: 'input action',
+                                },
+                                vscode.CompletionItemKind.Value
+                            );
                             ci.detail = `Input Action: ${act}`;
                             ci.documentation = new vscode.MarkdownString(`Physical keyboard key mapping for \`${act}\``);
+                            ci.insertText = act;
                             items.push(ci);
                         }
                         return new vscode.CompletionList(items, false);
@@ -419,8 +427,15 @@ function activate(context) {
                 // 2. Event header suggestions (when line starts with 'when' or is empty)
                 if (trimmed === '' || trimmed === 'when' || trimmed === 'when ') {
                     for (const ev of catalog.EVENTS_DATA) {
-                        const ci = new vscode.CompletionItem(ev.label, vscode.CompletionItemKind.Event);
-                        ci.detail = ev.detail;
+                        const ci = new vscode.CompletionItem(
+                            {
+                                label: ev.label,
+                                detail: ` (${ev.name.replace('when ', '')})`,
+                                description: ev.detail || 'event',
+                            },
+                            vscode.CompletionItemKind.Event
+                        );
+                        ci.detail = `${ev.label} - ${ev.detail}`;
                         ci.documentation = formatEventHover(ev);
                         ci.insertText = new vscode.SnippetString(ev.snippet);
                         ci.sortText = `0_${ev.name}`;
@@ -430,21 +445,48 @@ function activate(context) {
 
                 // 3. All 151 Scratch 3.0 Standard Blocks & Functions
                 for (const fn of catalog.FUNCTIONS_DATA) {
-                    const kind =
-                        fn.shape === 'Reporter' || fn.shape === 'Boolean'
-                            ? vscode.CompletionItemKind.Property
-                            : vscode.CompletionItemKind.Function;
-                    const ci = new vscode.CompletionItem(fn.name, kind);
+                    let kind = vscode.CompletionItemKind.Function;
+                    if (fn.shape === 'Reporter') {
+                        kind = vscode.CompletionItemKind.Property;
+                    } else if (fn.shape === 'Boolean') {
+                        kind = vscode.CompletionItemKind.Operator;
+                    } else if (fn.shape === 'Hat') {
+                        kind = vscode.CompletionItemKind.Event;
+                    }
+
+                    const paramSummary =
+                        fn.parameters && fn.parameters.length > 0
+                            ? `(${fn.parameters.map((p) => (p.required ? p.name : `[${p.name}]`)).join(', ')})`
+                            : '()';
+
+                    const ci = new vscode.CompletionItem(
+                        {
+                            label: fn.name,
+                            detail: ` ${paramSummary}`,
+                            description: `${fn.category} • ${fn.shape}`,
+                        },
+                        kind
+                    );
+
                     ci.detail = `${fn.syntax} : ${fn.returnType}`;
                     ci.documentation = formatFunctionHover(fn);
                     ci.insertText = new vscode.SnippetString(fn.lspSnippet);
+                    ci.filterText = fn.name;
                     ci.sortText = `1_${fn.category}_${fn.name}`;
                     items.push(ci);
                 }
 
                 // 4. Control Flow and Syntax Keywords
                 for (const kw of catalog.KEYWORDS_DATA) {
-                    const ci = new vscode.CompletionItem(kw.name, vscode.CompletionItemKind.Keyword);
+                    const argTail = kw.syntax.replace(kw.name, '').trim();
+                    const ci = new vscode.CompletionItem(
+                        {
+                            label: kw.name,
+                            detail: argTail ? ` ${argTail}` : '',
+                            description: 'keyword',
+                        },
+                        vscode.CompletionItemKind.Keyword
+                    );
                     ci.detail = `${kw.syntax} (Keyword)`;
                     ci.documentation = formatKeywordHover(kw);
                     ci.insertText = new vscode.SnippetString(kw.snippet);
@@ -454,7 +496,14 @@ function activate(context) {
 
                 // 5. Built-in Game Entities
                 for (const obj of catalog.KNOWN_OBJECTS) {
-                    const ci = new vscode.CompletionItem(obj, vscode.CompletionItemKind.Class);
+                    const ci = new vscode.CompletionItem(
+                        {
+                            label: obj,
+                            detail: ' (Entity)',
+                            description: 'game object',
+                        },
+                        vscode.CompletionItemKind.Class
+                    );
                     ci.detail = `Game Object: ${obj}`;
                     ci.documentation = new vscode.MarkdownString(`Active scene entity \`${obj}\``);
                     ci.insertText = obj;
@@ -475,7 +524,14 @@ function activate(context) {
                             !catalog.KEYWORD_MAP.has(varName)
                         ) {
                             seen.add(varName);
-                            const ci = new vscode.CompletionItem(varName, vscode.CompletionItemKind.Variable);
+                            const ci = new vscode.CompletionItem(
+                                {
+                                    label: varName,
+                                    detail: ' (Variable)',
+                                    description: 'local variable',
+                                },
+                                vscode.CompletionItemKind.Variable
+                            );
                             ci.detail = 'User Variable';
                             ci.sortText = `4_${varName}`;
                             items.push(ci);
@@ -670,6 +726,25 @@ function activate(context) {
             outputChannel.appendLine('[LSP] Restart command triggered by user.');
             startLspServer();
             vscode.window.showInformationMessage('scratch-lang: Language Server restarted.');
+        }),
+        vscode.commands.registerCommand('scratch.searchFunctions', async () => {
+            const editor = vscode.window.activeTextEditor;
+            const items = catalog.FUNCTIONS_DATA.map((fn) => ({
+                label: `$(symbol-function) ${fn.name}`,
+                description: `(${fn.parameters.map((p) => p.name).join(', ')})`,
+                detail: `[${fn.category.toUpperCase()}] ${fn.shape} • ${fn.description}`,
+                fn: fn,
+            }));
+
+            const selected = await vscode.window.showQuickPick(items, {
+                placeHolder: 'Search all 151 Scratch blocks and functions by name, category, or description...',
+                matchOnDescription: true,
+                matchOnDetail: true,
+            });
+
+            if (selected && editor) {
+                editor.insertSnippet(new vscode.SnippetString(selected.fn.lspSnippet));
+            }
         })
     );
 }

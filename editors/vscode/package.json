@@ -65,10 +65,20 @@
         "command": "scratch.restartServer",
         "title": "Scratch: Restart Language Server",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "scratch.searchFunctions",
+        "title": "Scratch: Search Functions & Blocks",
+        "icon": "$(search)"
       }
     ],
     "menus": {
       "editor/title": [
+        {
+          "command": "scratch.searchFunctions",
+          "when": "resourceExtname == .sch",
+          "group": "navigation"
+        },
         {
           "command": "scratch.run",
           "when": "resourceExtname == .sch",
@@ -84,7 +94,30 @@
           "when": "resourceExtname == .sch",
           "group": "navigation"
         }
+      ],
+      "editor/context": [
+        {
+          "command": "scratch.searchFunctions",
+          "when": "editorLangId == scratch",
+          "group": "1_modification"
+        }
       ]
+    },
+    "configurationDefaults": {
+      "[scratch]": {
+        "editor.quickSuggestions": {
+          "other": "on",
+          "comments": "off",
+          "strings": "on"
+        },
+        "editor.suggestOnTriggerCharacters": true,
+        "editor.wordBasedSuggestions": "matchingDocuments",
+        "editor.suggest.showIcons": true,
+        "editor.suggest.showStatusBar": true,
+        "editor.suggest.preview": true,
+        "editor.acceptSuggestionOnEnter": "on",
+        "editor.tabCompletion": "on"
+      }
     },
     "configuration": {
       "type": "object",
