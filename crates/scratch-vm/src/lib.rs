@@ -290,5 +290,30 @@ when start:
         assert_eq!(world.get_var("tempo").unwrap().as_number(), Some(60.0));
         assert!(!world.get_var("user").unwrap().as_string().unwrap().is_empty());
     }
+
+    #[test]
+    fn test_vm_broadcast_and_message_dispatch() {
+        let code = r#"
+when start:
+    status = "running"
+    broadcast("game_over")
+
+when message("game_over"):
+    status = "stopped"
+    score = 100
+"#;
+        let ast = parse(code).expect("parse ok");
+        let reg = BlockRegistry::core();
+        let ir = lower_ast_to_ir(&ast, &reg).expect("ir ok");
+
+        let mut compiler = BytecodeCompiler::new();
+        let program = compiler.compile_program(&ir);
+
+        let mut runtime = VmRuntime::new(program, reg);
+        runtime.start().expect("start ok");
+
+        assert_eq!(runtime.world.get_var("status").unwrap().as_string(), Some("stopped"));
+        assert_eq!(runtime.world.get_var("score").unwrap().as_number(), Some(100.0));
+    }
 }
 

@@ -17,6 +17,7 @@ pub struct World {
     pub camera_follow_target: Option<String>,
     pub camera_pos: (f32, f32),
     pub camera_zoom: f32,
+    pub pending_messages: Vec<String>,
 }
 
 impl Default for World {
@@ -41,7 +42,16 @@ impl World {
             camera_follow_target: None,
             camera_pos: (0.0, 0.0),
             camera_zoom: 1.0,
+            pending_messages: Vec::new(),
         }
+    }
+
+    pub fn broadcast(&mut self, message: impl Into<String>) {
+        self.pending_messages.push(message.into());
+    }
+
+    pub fn take_messages(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.pending_messages)
     }
 
     pub fn spawn_entity(&mut self, name: impl Into<String>) -> EntityId {

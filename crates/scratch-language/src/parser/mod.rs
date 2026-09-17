@@ -95,6 +95,30 @@ impl Parser {
                         other => return Err(self.error(&format!("Unknown action event '{}'", other))),
                     }
                 }
+                TokenKind::Ident(id) if id == "message" || id == "receive" || id == "broadcast" => {
+                    self.advance();
+                    self.consume(TokenKind::LParen, "Expected '(' after message event keyword")?;
+                    let msg_name = match self.peek_kind() {
+                        TokenKind::StringLit(s) => {
+                            let val = s.clone();
+                            self.advance();
+                            val
+                        }
+                        TokenKind::Ident(s) => {
+                            let val = s.clone();
+                            self.advance();
+                            val
+                        }
+                        _ => return Err(self.error("Expected message name in parentheses")),
+                    };
+                    self.consume(TokenKind::RParen, "Expected ')' after message name")?;
+                    EventKind::Message(msg_name)
+                }
+                TokenKind::StringLit(s) => {
+                    let val = s.clone();
+                    self.advance();
+                    EventKind::Message(val)
+                }
                 TokenKind::Ident(first_obj) => {
                     let obj_a = first_obj.clone();
                     self.advance();

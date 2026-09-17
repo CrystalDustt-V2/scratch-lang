@@ -160,4 +160,22 @@ when start:
         assert_eq!(diags[0].code, "SL005");
         assert!(diags[0].message.contains("coin"));
     }
+
+    #[test]
+    fn test_parse_and_format_message_events() {
+        let code = r#"
+when start:
+    broadcast("game_over")
+
+when message("game_over"):
+    say(Player, "Game Over")
+"#;
+        let program = parse(code).expect("parse ok");
+        assert_eq!(program.events.len(), 2);
+        assert_eq!(program.events[0].kind, EventKind::Start);
+        assert_eq!(program.events[1].kind, EventKind::Message("game_over".to_string()));
+
+        let formatted = format_source(code).expect("format ok");
+        assert!(formatted.contains("when message(\"game_over\"):"));
+    }
 }

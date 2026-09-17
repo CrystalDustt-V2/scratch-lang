@@ -227,6 +227,7 @@ impl Analyzer {
                 ("when Player touches Enemy:", "when ${1:Player} touches ${2:Enemy}:\n    ${0}", "Triggers when two objects collide"),
                 ("every 1 seconds:", "every ${1:1} seconds:\n    ${0}", "Repeats periodically at fixed time intervals"),
                 ("after 2 seconds:", "after ${1:2} seconds:\n    ${0}", "Triggers once after a specified duration"),
+                ("when message(\"game_over\"):", "when message(\"${1:game_over}\"):\n    ${0}", "Triggers when a global broadcast message is received"),
             ];
 
             for (label, snippet, doc_str) in event_snippets {
@@ -463,6 +464,7 @@ impl Analyzer {
                     EventKind::EverySeconds(s) => format!("every {} seconds", s),
                     EventKind::AfterSeconds(s) => format!("after {} seconds", s),
                     EventKind::Custom(c) => format!("when custom(\"{}\")", c),
+                    EventKind::Message(m) => format!("when message(\"{}\")", m),
                 };
 
                 let lsp_start_line = event.span.line.saturating_sub(1) as u32;

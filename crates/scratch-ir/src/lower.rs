@@ -67,6 +67,7 @@ fn lower_event(event: &EventDef, registry: &BlockRegistry) -> Result<IrEventHand
         EventKind::EverySeconds(s) => IrTrigger::OnTimer { seconds: *s, repeating: true },
         EventKind::AfterSeconds(s) => IrTrigger::OnTimer { seconds: *s, repeating: false },
         EventKind::Custom(c) => IrTrigger::OnActionDown(c.clone()),
+        EventKind::Message(m) => IrTrigger::OnMessage(m.clone()),
     };
 
     let mut instructions = Vec::new();

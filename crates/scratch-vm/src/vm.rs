@@ -770,6 +770,12 @@ impl Vm {
                     .unwrap_or_else(|_| "player".to_string());
                 Ok(Some(BytecodeValue::String(name)))
             }
+            "broadcast" | "broadcast_and_wait" => {
+                if let Some(msg) = args.first().and_then(|v| as_str(v)) {
+                    world.broadcast(msg);
+                }
+                Ok(None)
+            }
             "stop_all" => {
                 world.set_var("__game_stopped", RuntimeValue::Bool(true));
                 Ok(None)

@@ -94,6 +94,9 @@ impl Formatter {
             EventKind::Custom(c) => {
                 self.output.push_str(&format!("when {}:", c));
             }
+            EventKind::Message(m) => {
+                self.output.push_str(&format!("when message(\"{}\"):", m));
+            }
         }
         self.output.push('\n');
 

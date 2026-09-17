@@ -21,6 +21,7 @@ pub enum IrTrigger {
     OnActionUp(String),
     OnTouches { object_a: String, object_b: String },
     OnTimer { seconds: u64, repeating: bool },
+    OnMessage(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

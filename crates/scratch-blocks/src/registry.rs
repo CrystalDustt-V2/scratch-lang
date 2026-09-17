@@ -858,6 +858,23 @@ impl BlockRegistry {
                 .with_example("name = get_username()")
         );
 
+        // === BROADCAST & MESSAGING (from Scratch PDF p. 8) ===
+
+        registry.register(
+            BlockDefinition::new("broadcast", BlockCategory::Events, "Broadcast a message event to all scripts", BlockType::Void, "EventSystem::broadcast")
+                .with_param("message", BlockType::String, false, None, "Message name string")
+                .with_doc("Sends a global message that triggers any 'when message(\"...\"):' event handlers.")
+                .with_example("broadcast(\"game_over\")")
+                .with_example("broadcast(\"next_wave\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("broadcast_and_wait", BlockCategory::Events, "Broadcast a message and wait for handlers", BlockType::Void, "EventSystem::broadcastAndWait")
+                .with_param("message", BlockType::String, false, None, "Message name string")
+                .with_doc("Sends a global message and waits for all matching handlers to complete.")
+                .with_example("broadcast_and_wait(\"level_cleared\")")
+        );
+
         registry
     }
 

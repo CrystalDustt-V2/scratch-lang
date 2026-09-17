@@ -60,6 +60,7 @@ impl VmRuntime {
                 self.vm.execute(&event.chunk, &mut self.world, &self.registry)?;
             }
         }
+        self.dispatch_messages()?;
         self.check_scene_signals();
         Ok(())
     }
@@ -135,12 +136,33 @@ impl VmRuntime {
             }
         }
 
-        // 5. Check Scene Transitions
+        // 5. Broadcast Messages
+        self.dispatch_messages()?;
+
+        // 6. Check Scene Transitions
         self.check_scene_signals();
 
-        // 6. Clear transient input states
+        // 7. Clear transient input states
         self.world.clear_transient_inputs();
 
+        Ok(())
+    }
+
+    pub fn dispatch_messages(&mut self) -> Result<(), VmError> {
+        let mut cascade_guard = 0;
+        while !self.world.pending_messages.is_empty() && cascade_guard < 50 {
+            cascade_guard += 1;
+            let messages = self.world.take_messages();
+            for msg in messages {
+                for event in &self.bytecode.events {
+                    if let IrTrigger::OnMessage(target_msg) = &event.trigger {
+                        if target_msg == &msg {
+                            self.vm.execute(&event.chunk, &mut self.world, &self.registry)?;
+                        }
+                    }
+                }
+            }
+        }
         Ok(())
     }
 

@@ -49,7 +49,7 @@
       "patterns": [
         {
           "name": "entity.name.function.event.scratch",
-          "match": "\\b(start|update|touches)\\b"
+          "match": "\\b(start|update|touches|message|receive)\\b"
         },
         {
           "name": "support.class.action.scratch",
@@ -61,7 +61,7 @@
       "patterns": [
         {
           "name": "support.function.builtin.scratch",
-          "match": "\\b(move|jump|stop|teleport|touching|damage|heal|respawn|collect|change_x|set_x|change_y|set_y|turn_right|turn_left|point_in_direction|point_towards|bounce_on_edge|distance_to|x_position|y_position|get_direction|say|say_for|think|think_for|show|hide|set_size|change_size|get_size|get_costume_number|switch_costume|next_costume|clear_effects|set_effect|change_effect|next_backdrop|get_backdrop_name|sound\\.play|sound\\.play_until_done|sound\\.stop_all|sound\\.set_volume|sound\\.change_volume|sound\\.get_volume|music\\.play_note|music\\.play_drum|music\\.rest|music\\.set_tempo|music\\.change_tempo|music\\.set_instrument|music\\.get_tempo|mouse_x|mouse_y|mouse_down|key_pressed|get_timer|reset_timer|wait|clone|delete_clone|stop_all|random|math\\.round|math\\.abs|math\\.sqrt|math\\.sin|math\\.cos|math\\.tan|math\\.asin|math\\.acos|math\\.atan|math\\.ln|math\\.log|math\\.exp|math\\.pow|math\\.mod|math\\.min|math\\.max|math\\.floor|math\\.ceil|text\\.join|text\\.length|text\\.contains|text\\.letter_at|text\\.upper|text\\.lower|pen\\.clear|pen\\.down|pen\\.up|pen\\.set_color|pen\\.set_size|pen\\.change_size|pen\\.change_color|pen\\.set_shade|pen\\.change_shade|pen\\.stamp|current_time|days_since_2000|get_username|camera\\.follow|background\\.set|scene\\.switch|scene\\.restart)\\b"
+          "match": "\\b(move|jump|stop|teleport|touching|damage|heal|respawn|collect|change_x|set_x|change_y|set_y|turn_right|turn_left|point_in_direction|point_towards|bounce_on_edge|distance_to|x_position|y_position|get_direction|say|say_for|think|think_for|show|hide|set_size|change_size|get_size|get_costume_number|switch_costume|next_costume|clear_effects|set_effect|change_effect|next_backdrop|get_backdrop_name|sound\\.play|sound\\.play_until_done|sound\\.stop_all|sound\\.set_volume|sound\\.change_volume|sound\\.get_volume|music\\.play_note|music\\.play_drum|music\\.rest|music\\.set_tempo|music\\.change_tempo|music\\.set_instrument|music\\.get_tempo|mouse_x|mouse_y|mouse_down|key_pressed|get_timer|reset_timer|wait|clone|delete_clone|broadcast|broadcast_and_wait|stop_all|random|math\\.round|math\\.abs|math\\.sqrt|math\\.sin|math\\.cos|math\\.tan|math\\.asin|math\\.acos|math\\.atan|math\\.ln|math\\.log|math\\.exp|math\\.pow|math\\.mod|math\\.min|math\\.max|math\\.floor|math\\.ceil|text\\.join|text\\.length|text\\.contains|text\\.letter_at|text\\.upper|text\\.lower|pen\\.clear|pen\\.down|pen\\.up|pen\\.set_color|pen\\.set_size|pen\\.change_size|pen\\.change_color|pen\\.set_shade|pen\\.change_shade|pen\\.stamp|current_time|days_since_2000|get_username|camera\\.follow|background\\.set|scene\\.switch|scene\\.restart)\\b"
         }
       ]
     },

@@ -39,6 +39,7 @@ pub enum EventKind {
     EverySeconds(u64),
     AfterSeconds(u64),
     Custom(String),
+    Message(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
