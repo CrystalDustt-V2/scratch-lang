@@ -10,6 +10,7 @@ pub struct Linter<'a> {
     diagnostics: Vec<Diagnostic>,
     defined_vars: HashSet<String>,
     declared_functions: HashSet<String>,
+    asset_index: Option<&'a scratch_assets::AssetIndex>,
 }
 
 impl<'a> Linter<'a> {
@@ -38,11 +39,17 @@ impl<'a> Linter<'a> {
             diagnostics: Vec::new(),
             defined_vars: HashSet::new(),
             declared_functions: HashSet::new(),
+            asset_index: None,
         }
     }
 
     pub fn with_objects(mut self, objects: impl IntoIterator<Item = String>) -> Self {
         self.known_objects.extend(objects);
+        self
+    }
+
+    pub fn with_assets(mut self, assets: &'a scratch_assets::AssetIndex) -> Self {
+        self.asset_index = Some(assets);
         self
     }
 
@@ -170,6 +177,25 @@ impl<'a> Linter<'a> {
                             format!("Potential per-frame misuse: Calling \"{}\" inside 'when update' will trigger every frame.", full_name),
                             *span,
                         ));
+                    }
+
+                    // Check SL005: Missing asset
+                    if let Some(assets) = self.asset_index {
+                        if full_name == "sound.play" {
+                            if let Some(Expr::String(snd, span)) = args.first() {
+                                if !assets.has_sound(snd) {
+                                    let mut diag = Diagnostic::new(
+                                        "SL005",
+                                        format!("Audio asset \"{}\" not found in assets/sounds/ or assets/music/.", snd),
+                                        *span,
+                                    );
+                                    if let Some(similar) = assets.find_similar(snd) {
+                                        diag = diag.with_suggestion(similar);
+                                    }
+                                    self.diagnostics.push(diag);
+                                }
+                            }
+                        }
                     }
                 }
 

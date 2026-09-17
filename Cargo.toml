@@ -8,6 +8,8 @@ members = [
     "crates/scratch-vm",
     "crates/scratch-runtime",
     "crates/scratch-project",
+    "crates/scratch-scenes",
+    "crates/scratch-assets",
     "runtimes/native",
     "apps/scratch-cli",
 ]

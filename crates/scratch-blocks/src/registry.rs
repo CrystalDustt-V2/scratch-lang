@@ -123,6 +123,21 @@ impl BlockRegistry {
                 .with_example("background.set(\"forest\")")
         );
 
+        // 13. Scene: scene.switch(name)
+        registry.register(
+            BlockDefinition::new("scene.switch", BlockCategory::Scene, "Switch to a new scene by name", BlockType::Void, "SceneSystem::switch")
+                .with_param("name", BlockType::String, false, None, "Scene name")
+                .with_doc("Transitions execution to the specified scene level.")
+                .with_example("scene.switch(\"Level2\")")
+        );
+
+        // 14. Scene: scene.restart()
+        registry.register(
+            BlockDefinition::new("scene.restart", BlockCategory::Scene, "Restart the current scene", BlockType::Void, "SceneSystem::restart")
+                .with_doc("Reloads the current scene layout and object states.")
+                .with_example("scene.restart()")
+        );
+
         registry
     }
 

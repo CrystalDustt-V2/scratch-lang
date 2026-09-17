@@ -3888,6 +3888,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
+name = "scratch-assets"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "scratch-blocks"
 version = "0.1.0"
 dependencies = [
@@ -3912,6 +3921,7 @@ name = "scratch-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "scratch-assets",
  "scratch-blocks",
  "scratch-bytecode",
  "scratch-ir",
@@ -3919,6 +3929,7 @@ dependencies = [
  "scratch-native",
  "scratch-project",
  "scratch-runtime",
+ "scratch-scenes",
  "scratch-vm",
  "thiserror 2.0.20",
 ]
@@ -3937,6 +3948,7 @@ dependencies = [
 name = "scratch-language"
 version = "0.1.0"
 dependencies = [
+ "scratch-assets",
  "scratch-blocks",
  "serde",
  "thiserror 2.0.20",
@@ -3976,6 +3988,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "scratch-scenes"
+version = "0.1.0"
+dependencies = [
+ "scratch-runtime",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "scratch-vm"
 version = "0.1.0"
 dependencies = [
@@ -3984,6 +4007,7 @@ dependencies = [
  "scratch-ir",
  "scratch-language",
  "scratch-runtime",
+ "scratch-scenes",
  "serde",
  "thiserror 2.0.20",
 ]

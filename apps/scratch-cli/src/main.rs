@@ -1,10 +1,14 @@
 use clap::{Parser, Subcommand};
+use scratch_assets::AssetIndex;
 use scratch_blocks::BlockRegistry;
+use scratch_bytecode::BytecodeCompiler;
 use scratch_ir::lower_ast_to_ir;
-use scratch_language::{format_source, lint_source, parse};
+use scratch_language::{format_source, parse, Linter};
 use scratch_native::NativeRunner;
 use scratch_project::ProjectConfig;
 use scratch_runtime::Runtime;
+use scratch_scenes::{SceneData, SceneManager};
+use scratch_vm::VmRuntime;
 use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
@@ -122,6 +126,10 @@ fn create_new_project(name: &str) -> Result<(), Box<dyn std::error::Error>> {
     };
     config.save_to_file(project_dir.join("project.schproj"))?;
 
+    // Create default main.scene
+    let default_scene = SceneData::default();
+    default_scene.save_to_file(project_dir.join("scenes/main.scene"))?;
+
     let sample_sch = r#"when start:
     score = 0
     background.set("white")
@@ -191,7 +199,7 @@ fn check_project(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let ast = parse(&source).map_err(|e| format!("In {}: {}", entry_path.display(), e))?;
     let registry = BlockRegistry::core();
     let ir = lower_ast_to_ir(&ast, &registry).map_err(|e| format!("IR lowering in {}: {}", entry_path.display(), e))?;
-    let mut compiler = scratch_bytecode::BytecodeCompiler::new();
+    let mut compiler = BytecodeCompiler::new();
     let bytecode = compiler.compile_program(&ir);
 
     let total_instructions: usize = bytecode.events.iter().map(|e| e.chunk.instructions.len()).sum();
@@ -206,8 +214,27 @@ fn lint_project(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let (entry_path, _config) = resolve_entry_file(path)?;
     let source = std::fs::read_to_string(&entry_path)?;
 
+    let proj_dir = if entry_path.is_file() {
+        entry_path.parent().and_then(|p| p.parent()).unwrap_or(Path::new("."))
+    } else {
+        path
+    };
+
+    let assets_dir = proj_dir.join("assets");
+    let mut asset_index = AssetIndex::new();
+    if assets_dir.exists() {
+        asset_index.scan_directory(&assets_dir);
+    }
+
     let registry = BlockRegistry::core();
-    let diagnostics = lint_source(&source, &registry).map_err(|e| format!("Lint error: {}", e))?;
+    let program = parse(&source).map_err(|e| format!("Parse error: {}", e))?;
+
+    let mut linter = Linter::new(&registry);
+    if assets_dir.exists() {
+        linter = linter.with_assets(&asset_index);
+    }
+
+    let diagnostics = linter.lint_program(&program);
 
     if diagnostics.is_empty() {
         println!("No lint issues found in {}! Clean code.", entry_path.display());
@@ -268,10 +295,22 @@ fn test_project(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let ast = parse(&source).map_err(|e| format!("In {}: {}", entry_path.display(), e))?;
     let registry = BlockRegistry::core();
     let ir = lower_ast_to_ir(&ast, &registry).map_err(|e| format!("IR lowering error: {}", e))?;
-    let mut compiler = scratch_bytecode::BytecodeCompiler::new();
+    let mut compiler = BytecodeCompiler::new();
     let bytecode = compiler.compile_program(&ir);
 
-    let mut vm_runtime = scratch_vm::VmRuntime::new(bytecode, registry);
+    let proj_dir = if entry_path.is_file() {
+        entry_path.parent().and_then(|p| p.parent()).unwrap_or(Path::new("."))
+    } else {
+        path
+    };
+    let scenes_dir = proj_dir.join("scenes");
+
+    let mut vm_runtime = VmRuntime::new(bytecode, registry);
+    if scenes_dir.exists() {
+        let scene_mgr = SceneManager::new().with_directory(&scenes_dir);
+        vm_runtime = vm_runtime.with_scene_manager(scene_mgr);
+    }
+
     vm_runtime.start()?;
     for _ in 0..10 {
         vm_runtime.tick(0.016)?;

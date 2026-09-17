@@ -96,4 +96,63 @@ when action.down("right"):
         let player = vm_runtime.world.get_entity_by_name("Player").unwrap();
         assert_eq!(player.transform.x, 5.0);
     }
+
+    #[test]
+    fn test_vm_runtime_timers() {
+        let code = r#"
+when start:
+    ticks = 0
+
+every 2 seconds:
+    ticks += 1
+"#;
+        let ast = parse(code).expect("parse ok");
+        let reg = BlockRegistry::core();
+        let ir = lower_ast_to_ir(&ast, &reg).expect("ir ok");
+
+        let mut compiler = BytecodeCompiler::new();
+        let program = compiler.compile_program(&ir);
+
+        let mut vm_runtime = VmRuntime::new(program, reg);
+        vm_runtime.start().expect("start ok");
+        assert_eq!(vm_runtime.world.get_var("ticks").unwrap().as_number(), Some(0.0));
+
+        // Advance 1 second -> should NOT have fired yet
+        vm_runtime.tick(1.0).expect("tick");
+        assert_eq!(vm_runtime.world.get_var("ticks").unwrap().as_number(), Some(0.0));
+
+        // Advance another 1.1 seconds -> now total 2.1s >= 2.0s -> should fire!
+        vm_runtime.tick(1.1).expect("tick");
+        assert_eq!(vm_runtime.world.get_var("ticks").unwrap().as_number(), Some(1.0));
+
+        // Advance another 2.0 seconds -> should fire second time!
+        vm_runtime.tick(2.0).expect("tick");
+        assert_eq!(vm_runtime.world.get_var("ticks").unwrap().as_number(), Some(2.0));
+    }
+
+    #[test]
+    fn test_vm_runtime_scene_switching() {
+        let code = r#"
+when start:
+    scene.switch("Level2")
+"#;
+        let ast = parse(code).expect("parse ok");
+        let reg = BlockRegistry::core();
+        let ir = lower_ast_to_ir(&ast, &reg).expect("ir ok");
+
+        let mut compiler = BytecodeCompiler::new();
+        let program = compiler.compile_program(&ir);
+
+        let mut scene_mgr = scratch_scenes::SceneManager::new();
+        let mut level2 = scratch_scenes::SceneData::default();
+        level2.name = "Level2".into();
+        level2.background = "night".into();
+        scene_mgr.register_scene(level2);
+
+        let mut vm_runtime = VmRuntime::new(program, reg).with_scene_manager(scene_mgr);
+        vm_runtime.start().expect("start ok");
+
+        // World background should now be switched to "night"!
+        assert_eq!(vm_runtime.world.background, "night");
+    }
 }

@@ -2,13 +2,24 @@ use crate::vm::{Vm, VmError};
 use scratch_blocks::BlockRegistry;
 use scratch_bytecode::BytecodeProgram;
 use scratch_ir::IrTrigger;
-use scratch_runtime::World;
+use scratch_runtime::{RuntimeValue, World};
+use scratch_scenes::SceneManager;
+
+#[derive(Debug, Clone)]
+pub struct TimerTracker {
+    pub seconds: f32,
+    pub repeating: bool,
+    pub elapsed: f32,
+    pub fired: bool,
+}
 
 pub struct VmRuntime {
     pub world: World,
     pub bytecode: BytecodeProgram,
     pub registry: BlockRegistry,
     pub vm: Vm,
+    pub scene_manager: Option<SceneManager>,
+    pub timers: Vec<TimerTracker>,
 }
 
 impl VmRuntime {
@@ -16,12 +27,31 @@ impl VmRuntime {
         let mut world = World::new();
         world.spawn_entity("Player");
 
+        let mut timers = Vec::new();
+        for event in &bytecode.events {
+            if let IrTrigger::OnTimer { seconds, repeating } = &event.trigger {
+                timers.push(TimerTracker {
+                    seconds: *seconds as f32,
+                    repeating: *repeating,
+                    elapsed: 0.0,
+                    fired: false,
+                });
+            }
+        }
+
         Self {
             world,
             bytecode,
             registry,
             vm: Vm::default(),
+            scene_manager: None,
+            timers,
         }
+    }
+
+    pub fn with_scene_manager(mut self, manager: SceneManager) -> Self {
+        self.scene_manager = Some(manager);
+        self
     }
 
     pub fn start(&mut self) -> Result<(), VmError> {
@@ -30,10 +60,11 @@ impl VmRuntime {
                 self.vm.execute(&event.chunk, &mut self.world, &self.registry)?;
             }
         }
+        self.check_scene_signals();
         Ok(())
     }
 
-    pub fn tick(&mut self, _dt: f32) -> Result<(), VmError> {
+    pub fn tick(&mut self, dt: f32) -> Result<(), VmError> {
         // 1. Inputs
         for event in &self.bytecode.events {
             match &event.trigger {
@@ -78,16 +109,58 @@ impl VmRuntime {
             }
         }
 
-        // 3. Update
+        // 3. Timers
+        let mut timer_idx = 0;
+        for event in &self.bytecode.events {
+            if let IrTrigger::OnTimer { .. } = &event.trigger {
+                if let Some(timer) = self.timers.get_mut(timer_idx) {
+                    timer.elapsed += dt;
+                    if (!timer.fired || timer.repeating) && timer.elapsed >= timer.seconds {
+                        self.vm.execute(&event.chunk, &mut self.world, &self.registry)?;
+                        if timer.repeating {
+                            timer.elapsed = 0.0;
+                        } else {
+                            timer.fired = true;
+                        }
+                    }
+                }
+                timer_idx += 1;
+            }
+        }
+
+        // 4. Update
         for event in &self.bytecode.events {
             if matches!(event.trigger, IrTrigger::OnUpdate) {
                 self.vm.execute(&event.chunk, &mut self.world, &self.registry)?;
             }
         }
 
-        // 4. Clear transient input states
+        // 5. Check Scene Transitions
+        self.check_scene_signals();
+
+        // 6. Clear transient input states
         self.world.clear_transient_inputs();
 
         Ok(())
+    }
+
+    fn check_scene_signals(&mut self) {
+        if let Some(scene_val) = self.world.get_var("__next_scene").cloned() {
+            self.world.set_var("__next_scene", RuntimeValue::Nil);
+            if let Some(scene_name) = scene_val.as_string() {
+                if let Some(mgr) = &mut self.scene_manager {
+                    let _ = mgr.switch_scene(scene_name, &mut self.world);
+                }
+            }
+        }
+
+        if let Some(restart_val) = self.world.get_var("__restart_scene").cloned() {
+            if restart_val.as_bool() {
+                self.world.set_var("__restart_scene", RuntimeValue::Bool(false));
+                if let Some(mgr) = &self.scene_manager {
+                    mgr.restart_current_scene(&mut self.world);
+                }
+            }
+        }
     }
 }

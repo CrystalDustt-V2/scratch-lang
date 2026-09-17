@@ -9,6 +9,7 @@ scratch-blocks = { path = "../scratch-blocks" }
 scratch-bytecode = { path = "../scratch-bytecode" }
 scratch-ir = { path = "../scratch-ir" }
 scratch-runtime = { path = "../scratch-runtime" }
+scratch-scenes = { path = "../scratch-scenes" }
 serde = { workspace = true }
 thiserror = { workspace = true }
 

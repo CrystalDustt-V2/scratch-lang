@@ -136,4 +136,28 @@ when start:
         assert_eq!(diags[0].code, "SL003");
         assert_eq!(diags[0].suggestion, Some("move".to_string()));
     }
+
+    #[test]
+    fn test_linter_catches_missing_asset() {
+        let code = r#"
+when start:
+    sound.play("coin")
+"#;
+        let registry = BlockRegistry::core();
+        let mut index = scratch_assets::AssetIndex::new();
+        index.register(scratch_assets::AssetInfo {
+            name: "coin_pickup".into(),
+            category: scratch_assets::AssetCategory::Sound,
+            relative_path: "assets/sounds/coin_pickup.wav".into(),
+            extension: "wav".into(),
+        });
+
+        let program = parse(code).expect("parse ok");
+        let mut linter = Linter::new(&registry).with_assets(&index);
+        let diags = linter.lint_program(&program);
+
+        assert_eq!(diags.len(), 1);
+        assert_eq!(diags[0].code, "SL005");
+        assert!(diags[0].message.contains("coin"));
+    }
 }

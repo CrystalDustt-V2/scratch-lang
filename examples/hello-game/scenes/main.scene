@@ -1,0 +1,14 @@
+name: Main
+background: white
+camera:
+  x: 0.0
+  y: 0.0
+  zoom: 1.0
+  follow: Player
+objects:
+  - name: Player
+    x: 0.0
+    y: 0.0
+    size: [40.0, 40.0]
+    color: [0.2, 0.6, 1.0, 1.0]
+    tags: ["player"]

@@ -326,6 +326,16 @@ impl Vm {
                 }
                 Ok(None)
             }
+            "scene.switch" => {
+                if let Some(scene_name) = args.first().and_then(|v| as_str(v)) {
+                    world.set_var("__next_scene", RuntimeValue::String(scene_name.to_string()));
+                }
+                Ok(None)
+            }
+            "scene.restart" => {
+                world.set_var("__restart_scene", RuntimeValue::Bool(true));
+                Ok(None)
+            }
             _ => Ok(None),
         }
     }
