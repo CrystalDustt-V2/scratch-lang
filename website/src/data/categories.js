@@ -1,0 +1,18 @@
+export const CATEGORIES = [
+  { id: 'all', name: 'All Functions', count: 147, color: '#4C97FF', icon: 'Layers' },
+  { id: 'motion', name: 'Motion', count: 18, color: '#4C97FF', icon: 'Move' },
+  { id: 'looks', name: 'Looks', count: 21, color: '#9966FF', icon: 'Eye' },
+  { id: 'sound', name: 'Sound & Audio', count: 9, color: '#CF63CF', icon: 'Volume2' },
+  { id: 'events', name: 'Events', count: 8, color: '#FFBF00', icon: 'Zap' },
+  { id: 'control', name: 'Control & Flow', count: 11, color: '#FFAB19', icon: 'GitBranch' },
+  { id: 'sensing', name: 'Sensing & Clock', count: 18, color: '#5CB1D6', icon: 'Compass' },
+  { id: 'operators', name: 'Operators & Math', count: 18, color: '#59C059', icon: 'Binary' },
+  { id: 'variables', name: 'Variables', count: 5, color: '#FF8C1A', icon: 'Database' },
+  { id: 'lists', name: 'Lists & Arrays', count: 12, color: '#FF661A', icon: 'ListFilter' },
+  { id: 'procedures', name: 'My Blocks (Procedures)', count: 4, color: '#FF6680', icon: 'Code2' },
+  { id: 'pen', name: 'Pen Extension', count: 9, color: '#0FBD8C', icon: 'PenTool' },
+  { id: 'music', name: 'Music Extension', count: 7, color: '#0FBD8C', icon: 'Music' },
+  { id: 'tts', name: 'Text to Speech', count: 3, color: '#0FBD8C', icon: 'Mic' },
+  { id: 'translate', name: 'Translate Extension', count: 2, color: '#0FBD8C', icon: 'Languages' },
+  { id: 'makey', name: 'Makey Makey', count: 2, color: '#0FBD8C', icon: 'Gamepad2' },
+];
