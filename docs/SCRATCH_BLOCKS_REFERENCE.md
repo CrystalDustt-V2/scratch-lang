@@ -3,7 +3,7 @@
 This document provides a comprehensive mapping of every single Scratch block from the official Harvard Scratch reference (*"All Blocks of Scratch"*, Creative Coding Using Scratch V1) into **scratch-lang** (`.sch`) text-based equivalents.
 
 > [!NOTE]
-> For the exhaustive, full-depth encyclopedia tracking all **124 Scratch 3.0 core blocks** and **80+ hardware/software extension blocks** with Scratch opcodes and implementation scorecards, see [**SCRATCH_MASTER_BLOCKS_CATALOG.md**](file:///D:/scratch-lang/docs/SCRATCH_MASTER_BLOCKS_CATALOG.md).
+> For the complete internal engineering master blocks catalog tracking all **124 Scratch 3.0 core blocks** and **80+ hardware/software extension blocks** with internal opcodes and implementation scorecards, refer to `.agent-context/SCRATCH_MASTER_BLOCKS_CATALOG.md`.
 
 ---
 
@@ -17,7 +17,6 @@ This document provides a comprehensive mapping of every single Scratch block fro
 7. [Control & Clones](#7-control--clones)
 8. [Sensing Blocks](#8-sensing-blocks)
 9. [Operators & Math](#9-operators--math)
-10. [Master Catalog & Status Tracker](file:///D:/scratch-lang/docs/SCRATCH_MASTER_BLOCKS_CATALOG.md)
 
 ---
 
