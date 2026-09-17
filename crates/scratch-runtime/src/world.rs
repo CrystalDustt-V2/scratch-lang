@@ -1,6 +1,35 @@
-use crate::entity::{Entity, EntityId};
-use crate::value::RuntimeValue;
 use std::collections::{HashMap, HashSet};
+use serde::{Deserialize, Serialize};
+use crate::{Entity, EntityId, RuntimeValue};
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PenStroke {
+    pub x1: f32,
+    pub y1: f32,
+    pub x2: f32,
+    pub y2: f32,
+    pub color: [f32; 4],
+    pub size: f32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PenStamp {
+    pub target: String,
+    pub x: f32,
+    pub y: f32,
+    pub rotation: f32,
+    pub scale_x: f32,
+    pub scale_y: f32,
+    pub color: [f32; 4],
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MusicEvent {
+    pub kind: String,
+    pub value: f32,
+    pub beats: f32,
+    pub instrument: i32,
+}
 
 #[derive(Debug, Clone)]
 pub struct World {
@@ -14,6 +43,8 @@ pub struct World {
     pub mouse_pos: (f32, f32),
     pub mouse_down: bool,
     pub background: String,
+    pub backdrops: Vec<String>,
+    pub active_backdrop_index: usize,
     pub camera_follow_target: Option<String>,
     pub camera_pos: (f32, f32),
     pub camera_zoom: f32,
@@ -21,6 +52,22 @@ pub struct World {
     pub active_tweens: Vec<crate::movement::GlideTween>,
     pub answer: String,
     pub active_prompt: Option<String>,
+    pub sound_effects: HashMap<String, f32>,
+    pub pen_active_sprites: HashSet<String>,
+    pub pen_color: [f32; 4],
+    pub pen_size: f32,
+    pub pen_param_hue: f32,
+    pub pen_param_saturation: f32,
+    pub pen_param_brightness: f32,
+    pub pen_param_transparency: f32,
+    pub pen_strokes: Vec<PenStroke>,
+    pub pen_stamps: Vec<PenStamp>,
+    pub music_tempo: f32,
+    pub music_instrument: i32,
+    pub music_events: Vec<MusicEvent>,
+    pub tts_voice: String,
+    pub tts_language: String,
+    pub tts_speech_queue: Vec<String>,
 }
 
 impl Default for World {
@@ -42,6 +89,8 @@ impl World {
             mouse_pos: (0.0, 0.0),
             mouse_down: false,
             background: "white".to_string(),
+            backdrops: vec!["backdrop1".to_string()],
+            active_backdrop_index: 0,
             camera_follow_target: None,
             camera_pos: (0.0, 0.0),
             camera_zoom: 1.0,
@@ -49,6 +98,22 @@ impl World {
             active_tweens: Vec::new(),
             answer: String::new(),
             active_prompt: None,
+            sound_effects: HashMap::new(),
+            pen_active_sprites: HashSet::new(),
+            pen_color: [0.0, 0.0, 1.0, 1.0], // default pen blue
+            pen_size: 1.0,
+            pen_param_hue: 66.0,
+            pen_param_saturation: 100.0,
+            pen_param_brightness: 100.0,
+            pen_param_transparency: 0.0,
+            pen_strokes: Vec::new(),
+            pen_stamps: Vec::new(),
+            music_tempo: 60.0,
+            music_instrument: 1,
+            music_events: Vec::new(),
+            tts_voice: "alto".to_string(),
+            tts_language: "en".to_string(),
+            tts_speech_queue: Vec::new(),
         }
     }
 
@@ -183,5 +248,160 @@ impl World {
     pub fn clear_transient_inputs(&mut self) {
         self.input_actions_pressed.clear();
         self.input_actions_up.clear();
+    }
+
+    // Backdrop management
+    pub fn switch_backdrop(&mut self, name: impl Into<String>) {
+        let name_str = name.into();
+        self.background = name_str.clone();
+        if let Some(pos) = self.backdrops.iter().position(|b| b == &name_str) {
+            self.active_backdrop_index = pos;
+        } else {
+            self.backdrops.push(name_str);
+            self.active_backdrop_index = self.backdrops.len() - 1;
+        }
+    }
+
+    pub fn next_backdrop(&mut self) {
+        if !self.backdrops.is_empty() {
+            self.active_backdrop_index = (self.active_backdrop_index + 1) % self.backdrops.len();
+            self.background = self.backdrops[self.active_backdrop_index].clone();
+        }
+    }
+
+    pub fn get_backdrop_number(&self) -> usize {
+        self.active_backdrop_index + 1
+    }
+
+    pub fn get_backdrop_name(&self) -> &str {
+        if let Some(b) = self.backdrops.get(self.active_backdrop_index) {
+            b.as_str()
+        } else {
+            &self.background
+        }
+    }
+
+    // Pen Subsystem
+    pub fn pen_down(&mut self, target: &str) {
+        self.pen_active_sprites.insert(target.to_string());
+    }
+
+    pub fn pen_up(&mut self, target: &str) {
+        self.pen_active_sprites.remove(target);
+    }
+
+    pub fn pen_clear(&mut self) {
+        self.pen_strokes.clear();
+        self.pen_stamps.clear();
+    }
+
+    pub fn pen_stamp(&mut self, target: &str) {
+        if let Some(ent) = self.get_entity_by_name(target) {
+            self.pen_stamps.push(PenStamp {
+                target: target.to_string(),
+                x: ent.transform.x,
+                y: ent.transform.y,
+                rotation: ent.transform.rotation,
+                scale_x: ent.transform.scale_x,
+                scale_y: ent.transform.scale_y,
+                color: ent.color,
+            });
+        }
+    }
+
+    pub fn pen_set_color(&mut self, color: [f32; 4]) {
+        self.pen_color = color;
+    }
+
+    pub fn pen_set_size(&mut self, size: f32) {
+        self.pen_size = size.max(1.0);
+    }
+
+    pub fn pen_change_size(&mut self, delta: f32) {
+        self.pen_size = (self.pen_size + delta).max(1.0);
+    }
+
+    pub fn pen_set_param(&mut self, param: &str, val: f32) {
+        match param.to_lowercase().as_str() {
+            "color" | "hue" => self.pen_param_hue = val % 100.0,
+            "saturation" => self.pen_param_saturation = val.clamp(0.0, 100.0),
+            "brightness" => self.pen_param_brightness = val.clamp(0.0, 100.0),
+            "transparency" => self.pen_param_transparency = val.clamp(0.0, 100.0),
+            _ => {}
+        }
+    }
+
+    pub fn pen_change_param(&mut self, param: &str, delta: f32) {
+        match param.to_lowercase().as_str() {
+            "color" | "hue" => self.pen_param_hue = (self.pen_param_hue + delta) % 100.0,
+            "saturation" => self.pen_param_saturation = (self.pen_param_saturation + delta).clamp(0.0, 100.0),
+            "brightness" => self.pen_param_brightness = (self.pen_param_brightness + delta).clamp(0.0, 100.0),
+            "transparency" => self.pen_param_transparency = (self.pen_param_transparency + delta).clamp(0.0, 100.0),
+            _ => {}
+        }
+    }
+
+    pub fn add_pen_stroke(&mut self, stroke: PenStroke) {
+        self.pen_strokes.push(stroke);
+    }
+
+    // Music Subsystem
+    pub fn music_play_note(&mut self, note: f32, beats: f32) {
+        self.music_events.push(MusicEvent {
+            kind: "note".to_string(),
+            value: note,
+            beats,
+            instrument: self.music_instrument,
+        });
+    }
+
+    pub fn music_play_drum(&mut self, drum: f32, beats: f32) {
+        self.music_events.push(MusicEvent {
+            kind: "drum".to_string(),
+            value: drum,
+            beats,
+            instrument: self.music_instrument,
+        });
+    }
+
+    pub fn music_set_tempo(&mut self, bpm: f32) {
+        self.music_tempo = bpm.max(20.0);
+        self.set_var("__music_tempo", RuntimeValue::Number(self.music_tempo as f64));
+    }
+
+    pub fn music_change_tempo(&mut self, delta: f32) {
+        self.music_tempo = (self.music_tempo + delta).max(20.0);
+        self.set_var("__music_tempo", RuntimeValue::Number(self.music_tempo as f64));
+    }
+
+    pub fn music_set_instrument(&mut self, inst: i32) {
+        self.music_instrument = inst;
+    }
+
+    // Sound DSP
+    pub fn sound_set_effect(&mut self, effect: &str, val: f32) {
+        self.sound_effects.insert(effect.to_lowercase(), val);
+    }
+
+    pub fn sound_change_effect(&mut self, effect: &str, delta: f32) {
+        let cur = self.sound_effects.entry(effect.to_lowercase()).or_insert(0.0);
+        *cur += delta;
+    }
+
+    pub fn sound_clear_effects(&mut self) {
+        self.sound_effects.clear();
+    }
+
+    // Text to Speech
+    pub fn tts_speak(&mut self, text: impl Into<String>) {
+        self.tts_speech_queue.push(text.into());
+    }
+
+    pub fn tts_set_voice(&mut self, voice: impl Into<String>) {
+        self.tts_voice = voice.into();
+    }
+
+    pub fn tts_set_language(&mut self, lang: impl Into<String>) {
+        self.tts_language = lang.into();
     }
 }

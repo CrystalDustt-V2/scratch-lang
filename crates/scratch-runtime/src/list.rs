@@ -83,10 +83,7 @@ impl ListSystem {
                 let len = list.len();
                 let seed = world
                     .get_var("__random_seed")
-                    .map(|v| match v {
-                        RuntimeValue::Number(n) => *n,
-                        _ => 31415.0,
-                    })
+                    .and_then(|v| v.as_number())
                     .unwrap_or(31415.0);
                 let next_seed = (seed * 1103515245.0 + 12345.0) % 2147483648.0;
                 let rand_idx = ((next_seed / 2147483648.0) * len as f64).floor() as usize;
@@ -128,6 +125,41 @@ impl ListSystem {
 
     pub fn hide(world: &mut World, list_name: &str) {
         world.set_var(format!("__list_visible_{}", list_name), RuntimeValue::Bool(false));
+    }
+
+    pub fn index_of(world: &World, list_name: &str, item: &RuntimeValue) -> f64 {
+        let list = match world.get_list(list_name) {
+            Some(l) => l,
+            None => return 0.0,
+        };
+
+        for (i, elem) in list.iter().enumerate() {
+            if values_equal(elem, item) {
+                return (i + 1) as f64; // Scratch 1-based index
+            }
+        }
+        0.0
+    }
+
+    pub fn to_string(world: &World, list_name: &str) -> String {
+        let list = match world.get_list(list_name) {
+            Some(l) => l,
+            None => return String::new(),
+        };
+
+        let all_single_char = !list.is_empty() && list.iter().all(|item| {
+            if let Some(s) = item.as_string() {
+                s.chars().count() == 1
+            } else {
+                false
+            }
+        });
+
+        if all_single_char {
+            list.iter().map(|item| item.to_string()).collect::<Vec<_>>().join("")
+        } else {
+            list.iter().map(|item| item.to_string()).collect::<Vec<_>>().join(" ")
+        }
     }
 }
 

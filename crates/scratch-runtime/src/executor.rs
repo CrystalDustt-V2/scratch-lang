@@ -352,6 +352,159 @@ impl Executor {
                     world.broadcast(format!("__scene_switch:{}", scene));
                 }
             }
+            "switch_backdrop" | "switch_backdrop_and_wait" => {
+                if let Some(bg) = args.first().and_then(|v| v.as_string()) {
+                    world.switch_backdrop(bg);
+                    world.broadcast(format!("__scene_switched:{}", bg));
+                }
+            }
+            "next_backdrop" => {
+                world.next_backdrop();
+                let cur = world.get_backdrop_name().to_string();
+                world.broadcast(format!("__scene_switched:{}", cur));
+            }
+            "set_drag_mode" => {
+                if let (Some(target), Some(mode)) = (
+                    args.first().and_then(|v| v.as_string()),
+                    args.get(1).and_then(|v| v.as_string()),
+                ) {
+                    SensingSystem::set_drag_mode(world, target, mode);
+                }
+            }
+            "sound.set_effect" => {
+                if let (Some(effect), Some(val)) = (
+                    args.first().and_then(|v| v.as_string()),
+                    args.get(1).and_then(|v| v.as_number()),
+                ) {
+                    world.sound_set_effect(effect, val as f32);
+                }
+            }
+            "sound.change_effect" => {
+                if let (Some(effect), Some(delta)) = (
+                    args.first().and_then(|v| v.as_string()),
+                    args.get(1).and_then(|v| v.as_number()),
+                ) {
+                    world.sound_change_effect(effect, delta as f32);
+                }
+            }
+            "sound.clear_effects" => {
+                world.sound_clear_effects();
+            }
+            "pen.clear" | "pen.erase_all" => {
+                world.pen_clear();
+            }
+            "pen.stamp" => {
+                if let Some(target) = args.first().and_then(|v| v.as_string()) {
+                    world.pen_stamp(target);
+                }
+            }
+            "pen.down" => {
+                if let Some(target) = args.first().and_then(|v| v.as_string()) {
+                    world.pen_down(target);
+                }
+            }
+            "pen.up" => {
+                if let Some(target) = args.first().and_then(|v| v.as_string()) {
+                    world.pen_up(target);
+                }
+            }
+            "pen.set_color" => {
+                if let Some(color_val) = args.first() {
+                    let c = match color_val {
+                        RuntimeValue::String(s) if s.starts_with('#') && s.len() == 7 => {
+                            let r = u8::from_str_radix(&s[1..3], 16).unwrap_or(0) as f32 / 255.0;
+                            let g = u8::from_str_radix(&s[3..5], 16).unwrap_or(0) as f32 / 255.0;
+                            let b = u8::from_str_radix(&s[5..7], 16).unwrap_or(0) as f32 / 255.0;
+                            [r, g, b, 1.0]
+                        }
+                        RuntimeValue::String(s) => match s.to_lowercase().as_str() {
+                            "red" => [1.0, 0.0, 0.0, 1.0],
+                            "green" => [0.0, 1.0, 0.0, 1.0],
+                            "blue" => [0.0, 0.0, 1.0, 1.0],
+                            "black" => [0.0, 0.0, 0.0, 1.0],
+                            "white" => [1.0, 1.0, 1.0, 1.0],
+                            "yellow" => [1.0, 1.0, 0.0, 1.0],
+                            _ => [0.0, 0.5, 1.0, 1.0],
+                        },
+                        _ => [0.0, 0.0, 1.0, 1.0],
+                    };
+                    world.pen_set_color(c);
+                }
+            }
+            "pen.set_size" => {
+                if let Some(sz) = args.first().and_then(|v| v.as_number()) {
+                    world.pen_set_size(sz as f32);
+                }
+            }
+            "pen.change_size" => {
+                if let Some(delta) = args.first().and_then(|v| v.as_number()) {
+                    world.pen_change_size(delta as f32);
+                }
+            }
+            "pen.set_param" => {
+                if let (Some(param), Some(val)) = (
+                    args.first().and_then(|v| v.as_string()),
+                    args.get(1).and_then(|v| v.as_number()),
+                ) {
+                    world.pen_set_param(param, val as f32);
+                }
+            }
+            "pen.change_param" => {
+                if let (Some(param), Some(delta)) = (
+                    args.first().and_then(|v| v.as_string()),
+                    args.get(1).and_then(|v| v.as_number()),
+                ) {
+                    world.pen_change_param(param, delta as f32);
+                }
+            }
+            "music.play_note" => {
+                let note = args.first().and_then(|v| v.as_number()).unwrap_or(60.0) as f32;
+                let beats = args.get(1).and_then(|v| v.as_number()).unwrap_or(0.5) as f32;
+                world.music_play_note(note, beats);
+            }
+            "music.play_drum" => {
+                let drum = args.first().and_then(|v| v.as_number()).unwrap_or(1.0) as f32;
+                let beats = args.get(1).and_then(|v| v.as_number()).unwrap_or(0.25) as f32;
+                world.music_play_drum(drum, beats);
+            }
+            "music.rest" => {
+                // Audio rest pause
+            }
+            "music.set_instrument" => {
+                if let Some(inst) = args.first().and_then(|v| v.as_number()) {
+                    world.music_set_instrument(inst as i32);
+                }
+            }
+            "music.set_tempo" => {
+                if let Some(bpm) = args.first().and_then(|v| v.as_number()) {
+                    world.music_set_tempo(bpm as f32);
+                }
+            }
+            "music.change_tempo" => {
+                if let Some(delta) = args.first().and_then(|v| v.as_number()) {
+                    world.music_change_tempo(delta as f32);
+                }
+            }
+            "tts.speak" => {
+                if let Some(txt) = args.first().and_then(|v| v.as_string()) {
+                    world.tts_speak(txt);
+                }
+            }
+            "tts.set_voice" => {
+                if let Some(voice) = args.first().and_then(|v| v.as_string()) {
+                    world.tts_set_voice(voice);
+                }
+            }
+            "tts.set_language" => {
+                if let Some(lang) = args.first().and_then(|v| v.as_string()) {
+                    world.tts_set_language(lang);
+                }
+            }
+            "stop_other_scripts" => {
+                if let Some(target) = args.first().and_then(|v| v.as_string()) {
+                    world.active_tweens.retain(|t| t.target != target);
+                }
+            }
             _ => {
                 // Other runtime blocks
             }
@@ -616,8 +769,36 @@ impl Executor {
             "get_costume_number" => {
                 RuntimeValue::Number(1.0)
             }
+            "get_costume_name" => {
+                let target = args.first().and_then(|v| v.as_string()).unwrap_or("");
+                let name = world.get_entity_by_name(target).map(|e| e.costume_name.clone()).unwrap_or_else(|| "costume1".to_string());
+                RuntimeValue::String(name)
+            }
+            "get_backdrop_number" => {
+                RuntimeValue::Number(world.get_backdrop_number() as f64)
+            }
             "get_backdrop_name" => {
-                RuntimeValue::String(world.background.clone())
+                RuntimeValue::String(world.get_backdrop_name().to_string())
+            }
+            "current" => {
+                let unit = args.first().and_then(|v| v.as_string()).unwrap_or("second");
+                RuntimeValue::Number(SensingSystem::current(unit))
+            }
+            "list.index_of" | "item_num_of_list" => {
+                let list_name = args.first().and_then(|v| v.as_string()).unwrap_or("");
+                let item = args.get(1).unwrap_or(&RuntimeValue::Nil);
+                RuntimeValue::Number(ListSystem::index_of(world, list_name, item))
+            }
+            "list.to_string" => {
+                let list_name = args.first().and_then(|v| v.as_string()).unwrap_or("");
+                RuntimeValue::String(ListSystem::to_string(world, list_name))
+            }
+            "translate.text" => {
+                let s = args.first().map(|v| v.to_string()).unwrap_or_default();
+                RuntimeValue::String(s)
+            }
+            "translate.get_language" => {
+                RuntimeValue::String("en".to_string())
             }
             _ => RuntimeValue::Nil,
         }

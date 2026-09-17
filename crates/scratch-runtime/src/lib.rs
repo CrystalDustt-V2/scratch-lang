@@ -137,4 +137,83 @@ when Player touches Coin:
         let coin = runtime.world.get_entity_by_name("Coin").expect("Coin exists");
         assert!(!coin.visible);
     }
+
+    #[test]
+    fn test_newly_implemented_blocks_execution() {
+        let code = r#"
+when start:
+    switch_backdrop("beach")
+    set_drag_mode(Player, "draggable")
+    pen.down(Player)
+    pen.set_color("red")
+    pen.set_size(4)
+    move(Player, 20, 10)
+    pen.stamp(Player)
+    pen.up(Player)
+    move(Player, 10, 0)
+    sound.set_effect("pitch", 120)
+    sound.change_effect("pitch", -10)
+    music.set_tempo(140)
+    music.change_tempo(10)
+    music.play_note(60, 0.5)
+    tts.speak("Hello from scratch-lang!")
+    tts.set_voice("giant")
+    tts.set_language("fr")
+    list.add("items", "A")
+    list.add("items", "B")
+    pos = list.index_of("items", "B")
+    combined = list.to_string("items")
+    sec = current("second")
+    days = days_since_2000()
+    user = get_username()
+"#;
+        let ast = parse(code).expect("parse ok");
+        let registry = BlockRegistry::core();
+        let ir = lower_ast_to_ir(&ast, &registry).expect("lowering ok");
+
+        let mut runtime = Runtime::new(ir, registry);
+        runtime.start();
+
+        // 1. Backdrop
+        assert_eq!(runtime.world.get_backdrop_name(), "beach");
+        assert_eq!(runtime.world.get_backdrop_number(), 2); // default backdrop1 + beach
+
+        // 2. Entity drag mode
+        let player = runtime.world.get_entity_by_name("Player").unwrap();
+        assert!(player.draggable);
+
+        // 3. Pen strokes & stamps
+        assert_eq!(runtime.world.pen_strokes.len(), 1);
+        assert_eq!(runtime.world.pen_strokes[0].x1, 0.0);
+        assert_eq!(runtime.world.pen_strokes[0].x2, 20.0);
+        assert_eq!(runtime.world.pen_strokes[0].size, 4.0);
+        assert_eq!(runtime.world.pen_stamps.len(), 1);
+
+        // After pen.up, moving does NOT create another pen stroke
+        assert_eq!(runtime.world.pen_strokes.len(), 1);
+        let player = runtime.world.get_entity_by_name("Player").unwrap();
+        assert_eq!(player.transform.x, 30.0);
+
+        // 4. Sound effects
+        assert_eq!(runtime.world.sound_effects.get("pitch"), Some(&110.0));
+
+        // 5. Music tempo & notes
+        assert_eq!(runtime.world.music_tempo, 150.0);
+        assert_eq!(runtime.world.music_events.len(), 1);
+        assert_eq!(runtime.world.music_events[0].value, 60.0);
+
+        // 6. TTS
+        assert_eq!(runtime.world.tts_speech_queue, vec!["Hello from scratch-lang!".to_string()]);
+        assert_eq!(runtime.world.tts_voice, "giant");
+        assert_eq!(runtime.world.tts_language, "fr");
+
+        // 7. List index_of and to_string
+        assert_eq!(runtime.world.get_var("pos"), Some(&RuntimeValue::Number(2.0)));
+        assert_eq!(runtime.world.get_var("combined"), Some(&RuntimeValue::String("AB".to_string())));
+
+        // 8. System sensing
+        assert!(runtime.world.get_var("sec").is_some());
+        assert!(runtime.world.get_var("days").is_some());
+        assert!(runtime.world.get_var("user").is_some());
+    }
 }

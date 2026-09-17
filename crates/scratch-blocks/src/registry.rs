@@ -1144,6 +1144,127 @@ impl BlockRegistry {
                 .with_example("enemy_x = property_of(Enemy, \"x position\")")
         );
 
+        registry.register(
+            BlockDefinition::new("switch_backdrop", BlockCategory::Scene, "Switch active backdrop by name", BlockType::Void, "SceneSystem::switchBackdrop")
+                .with_param("name", BlockType::String, false, None, "Backdrop name")
+                .with_doc("Changes the stage backdrop texture or color.")
+                .with_example("switch_backdrop(\"castle\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("switch_backdrop_and_wait", BlockCategory::Scene, "Switch active backdrop and await handler completion", BlockType::Void, "SceneSystem::switchBackdropAndWait")
+                .with_param("name", BlockType::String, false, None, "Backdrop name")
+                .with_doc("Changes the stage backdrop and pauses until all triggered scripts finish.")
+                .with_example("switch_backdrop_and_wait(\"game_over\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("get_backdrop_number", BlockCategory::Scene, "Get 1-based index of active backdrop", BlockType::Number, "SceneSystem::getBackdropNumber")
+                .with_doc("Returns the 1-based index of the currently active stage backdrop.")
+                .with_example("num = get_backdrop_number()")
+        );
+
+        registry.register(
+            BlockDefinition::new("get_costume_name", BlockCategory::Looks, "Get active costume name of sprite", BlockType::String, "LooksSystem::getCostumeName")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_doc("Returns the string identifier of the target's current costume.")
+                .with_example("name = get_costume_name(Player)")
+        );
+
+        registry.register(
+            BlockDefinition::new("set_drag_mode", BlockCategory::Sensing, "Set draggable mode of sprite", BlockType::Void, "SensingSystem::setDragMode")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("mode", BlockType::String, false, Some("\"draggable\""), "Drag mode ('draggable' or 'not draggable')")
+                .with_doc("Toggles whether the sprite can be dragged by the mouse on the stage.")
+                .with_example("set_drag_mode(Player, \"draggable\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("current", BlockCategory::Sensing, "Get current system time unit", BlockType::Number, "SensingSystem::current")
+                .with_param("unit", BlockType::String, false, Some("\"second\""), "Time unit ('year', 'month', 'date', 'day of week', 'hour', 'minute', 'second')")
+                .with_doc("Returns the specified current time component from the system clock.")
+                .with_example("hr = current(\"hour\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("list.index_of", BlockCategory::Variables, "Find 1-based index of item in list", BlockType::Number, "ListSystem::indexOf")
+                .with_param("list", BlockType::String, false, None, "List identifier")
+                .with_param("item", BlockType::Any, false, None, "Item to search for")
+                .with_doc("Returns the 1-based index where the item first appears, or 0 if not found.")
+                .with_example("pos = list.index_of(\"inventory\", \"sword\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("list.to_string", BlockCategory::Variables, "Get all list elements concatenated as string", BlockType::String, "ListSystem::toString")
+                .with_param("list", BlockType::String, false, None, "List identifier")
+                .with_doc("Returns all items in the list joined into a single string.")
+                .with_example("text = list.to_string(\"letters\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("sound.set_effect", BlockCategory::Audio, "Set audio DSP effect value", BlockType::Void, "AudioSystem::setEffect")
+                .with_param("effect", BlockType::String, false, Some("\"pitch\""), "Effect name ('pitch' or 'pan')")
+                .with_param("value", BlockType::Number, false, Some("100"), "Effect magnitude value")
+                .with_doc("Assigns audio DSP effect parameter.")
+                .with_example("sound.set_effect(\"pitch\", 120)")
+        );
+
+        registry.register(
+            BlockDefinition::new("sound.change_effect", BlockCategory::Audio, "Change audio DSP effect value by delta", BlockType::Void, "AudioSystem::changeEffect")
+                .with_param("effect", BlockType::String, false, Some("\"pitch\""), "Effect name ('pitch' or 'pan')")
+                .with_param("delta", BlockType::Number, false, Some("10"), "Amount to shift effect")
+                .with_doc("Increases or decreases audio DSP effect parameter.")
+                .with_example("sound.change_effect(\"pitch\", 10)")
+        );
+
+        registry.register(
+            BlockDefinition::new("sound.clear_effects", BlockCategory::Audio, "Clear all audio DSP effects", BlockType::Void, "AudioSystem::clearEffects")
+                .with_doc("Resets pitch, pan, and sound filters back to defaults.")
+                .with_example("sound.clear_effects()")
+        );
+
+        registry.register(
+            BlockDefinition::new("tts.speak", BlockCategory::Custom, "Speak text string aloud using text-to-speech", BlockType::Void, "TtsSystem::speak")
+                .with_param("text", BlockType::String, false, None, "Text string to speak")
+                .with_doc("Speaks the specified text aloud and queues it for voice synthesizer.")
+                .with_example("tts.speak(\"Welcome to scratch-lang!\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("tts.set_voice", BlockCategory::Custom, "Set TTS voice persona", BlockType::Void, "TtsSystem::setVoice")
+                .with_param("voice", BlockType::String, false, Some("\"alto\""), "Voice persona ('alto', 'tenor', 'squeak', 'giant', 'kitten')")
+                .with_doc("Sets voice persona synthesizer pitch and timbre.")
+                .with_example("tts.set_voice(\"tenor\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("tts.set_language", BlockCategory::Custom, "Set TTS synthesizer language", BlockType::Void, "TtsSystem::setLanguage")
+                .with_param("language", BlockType::String, false, Some("\"en\""), "ISO language code")
+                .with_doc("Sets speech synthesis dialect and phoneme engine.")
+                .with_example("tts.set_language(\"es\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("translate.text", BlockCategory::Custom, "Translate string into target language", BlockType::String, "TranslateSystem::translate")
+                .with_param("text", BlockType::String, false, None, "Source text string")
+                .with_param("target_lang", BlockType::String, false, Some("\"es\""), "Target language ISO code")
+                .with_doc("Translates text into the chosen target language.")
+                .with_example("hola = translate.text(\"hello\", \"es\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("translate.get_language", BlockCategory::Custom, "Get viewer operating system language", BlockType::String, "TranslateSystem::getLanguage")
+                .with_doc("Returns the ISO language code of the current user environment.")
+                .with_example("lang = translate.get_language()")
+        );
+
+        registry.register(
+            BlockDefinition::new("stop_other_scripts", BlockCategory::Control, "Stop other scripts running on target entity", BlockType::Void, "ControlSystem::stopOtherScripts")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_doc("Cancels active movement tweens and queued coroutines for the specified sprite.")
+                .with_example("stop_other_scripts(Player)")
+        );
+
         registry
     }
 

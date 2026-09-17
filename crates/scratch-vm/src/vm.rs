@@ -925,6 +925,184 @@ impl Vm {
                 let val = SensingSystem::property_of(world, target, prop);
                 Ok(Some(runtime_to_bytecode(&val)))
             }
+            "switch_backdrop" | "switch_backdrop_and_wait" => {
+                if let Some(bg) = args.first().and_then(|v| as_str(v)) {
+                    world.switch_backdrop(bg);
+                    world.broadcast(format!("__scene_switched:{}", bg));
+                }
+                Ok(None)
+            }
+            "next_backdrop" => {
+                world.next_backdrop();
+                let cur = world.get_backdrop_name().to_string();
+                world.broadcast(format!("__scene_switched:{}", cur));
+                Ok(None)
+            }
+            "get_backdrop_number" => {
+                Ok(Some(BytecodeValue::Number(world.get_backdrop_number() as f64)))
+            }
+            "get_costume_name" => {
+                let target = args.first().and_then(|v| as_str(v)).unwrap_or("");
+                let name = world.get_entity_by_name(target).map(|e| e.costume_name.clone()).unwrap_or_else(|| "costume1".to_string());
+                Ok(Some(BytecodeValue::String(name)))
+            }
+            "set_drag_mode" => {
+                if let (Some(target), Some(mode)) = (
+                    args.first().and_then(|v| as_str(v)),
+                    args.get(1).and_then(|v| as_str(v)),
+                ) {
+                    SensingSystem::set_drag_mode(world, target, mode);
+                }
+                Ok(None)
+            }
+            "sound.set_effect" => {
+                if let (Some(effect), Some(val)) = (
+                    args.first().and_then(|v| as_str(v)),
+                    args.get(1).and_then(|v| as_f64(v)),
+                ) {
+                    world.sound_set_effect(effect, val as f32);
+                }
+                Ok(None)
+            }
+            "sound.change_effect" => {
+                if let (Some(effect), Some(delta)) = (
+                    args.first().and_then(|v| as_str(v)),
+                    args.get(1).and_then(|v| as_f64(v)),
+                ) {
+                    world.sound_change_effect(effect, delta as f32);
+                }
+                Ok(None)
+            }
+            "sound.clear_effects" => {
+                world.sound_clear_effects();
+                Ok(None)
+            }
+            "pen.clear" | "pen.erase_all" => {
+                world.pen_clear();
+                Ok(None)
+            }
+            "pen.stamp" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    world.pen_stamp(target);
+                }
+                Ok(None)
+            }
+            "pen.down" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    world.pen_down(target);
+                }
+                Ok(None)
+            }
+            "pen.up" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    world.pen_up(target);
+                }
+                Ok(None)
+            }
+            "pen.set_color" => {
+                if let Some(color_val) = args.first() {
+                    let c = match color_val {
+                        BytecodeValue::String(s) if s.starts_with('#') && s.len() == 7 => {
+                            let r = u8::from_str_radix(&s[1..3], 16).unwrap_or(0) as f32 / 255.0;
+                            let g = u8::from_str_radix(&s[3..5], 16).unwrap_or(0) as f32 / 255.0;
+                            let b = u8::from_str_radix(&s[5..7], 16).unwrap_or(0) as f32 / 255.0;
+                            [r, g, b, 1.0]
+                        }
+                        BytecodeValue::String(s) => match s.to_lowercase().as_str() {
+                            "red" => [1.0, 0.0, 0.0, 1.0],
+                            "green" => [0.0, 1.0, 0.0, 1.0],
+                            "blue" => [0.0, 0.0, 1.0, 1.0],
+                            "black" => [0.0, 0.0, 0.0, 1.0],
+                            "white" => [1.0, 1.0, 1.0, 1.0],
+                            "yellow" => [1.0, 1.0, 0.0, 1.0],
+                            _ => [0.0, 0.5, 1.0, 1.0],
+                        },
+                        _ => [0.0, 0.0, 1.0, 1.0],
+                    };
+                    world.pen_set_color(c);
+                }
+                Ok(None)
+            }
+            "pen.set_size" => {
+                if let Some(sz) = args.first().and_then(|v| as_f64(v)) {
+                    world.pen_set_size(sz as f32);
+                }
+                Ok(None)
+            }
+            "pen.set_param" => {
+                if let (Some(param), Some(val)) = (
+                    args.first().and_then(|v| as_str(v)),
+                    args.get(1).and_then(|v| as_f64(v)),
+                ) {
+                    world.pen_set_param(param, val as f32);
+                }
+                Ok(None)
+            }
+            "pen.change_param" => {
+                if let (Some(param), Some(delta)) = (
+                    args.first().and_then(|v| as_str(v)),
+                    args.get(1).and_then(|v| as_f64(v)),
+                ) {
+                    world.pen_change_param(param, delta as f32);
+                }
+                Ok(None)
+            }
+            "music.play_note" => {
+                let note = args.first().and_then(|v| as_f64(v)).unwrap_or(60.0) as f32;
+                let beats = args.get(1).and_then(|v| as_f64(v)).unwrap_or(0.5) as f32;
+                world.music_play_note(note, beats);
+                Ok(None)
+            }
+            "music.set_tempo" => {
+                if let Some(bpm) = args.first().and_then(|v| as_f64(v)) {
+                    world.music_set_tempo(bpm as f32);
+                }
+                Ok(None)
+            }
+            "current" => {
+                let unit = args.first().and_then(|v| as_str(v)).unwrap_or("second");
+                Ok(Some(BytecodeValue::Number(SensingSystem::current(unit))))
+            }
+            "list.index_of" | "item_num_of_list" => {
+                let list_name = args.first().and_then(|v| as_str(v)).unwrap_or("");
+                let item = args.get(1).map(bytecode_to_runtime).unwrap_or(RuntimeValue::Nil);
+                Ok(Some(BytecodeValue::Number(ListSystem::index_of(world, list_name, &item))))
+            }
+            "list.to_string" => {
+                let list_name = args.first().and_then(|v| as_str(v)).unwrap_or("");
+                Ok(Some(BytecodeValue::String(ListSystem::to_string(world, list_name))))
+            }
+            "tts.speak" => {
+                if let Some(txt) = args.first().and_then(|v| as_str(v)) {
+                    world.tts_speak(txt);
+                }
+                Ok(None)
+            }
+            "tts.set_voice" => {
+                if let Some(voice) = args.first().and_then(|v| as_str(v)) {
+                    world.tts_set_voice(voice);
+                }
+                Ok(None)
+            }
+            "tts.set_language" => {
+                if let Some(lang) = args.first().and_then(|v| as_str(v)) {
+                    world.tts_set_language(lang);
+                }
+                Ok(None)
+            }
+            "translate.text" => {
+                let s = args.first().map(|v| match v { BytecodeValue::String(str) => str.clone(), _ => v.to_string() }).unwrap_or_default();
+                Ok(Some(BytecodeValue::String(s)))
+            }
+            "translate.get_language" => {
+                Ok(Some(BytecodeValue::String("en".to_string())))
+            }
+            "stop_other_scripts" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    world.active_tweens.retain(|t| t.target != target);
+                }
+                Ok(None)
+            }
             _ => Ok(None),
         }
     }

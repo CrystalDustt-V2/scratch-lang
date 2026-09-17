@@ -129,6 +129,55 @@ impl SensingSystem {
             .and_then(|v| v.as_number())
             .unwrap_or(0.0)
     }
+
+    pub fn set_drag_mode(world: &mut World, target: &str, mode: &str) {
+        let draggable = mode.eq_ignore_ascii_case("draggable") || mode.eq_ignore_ascii_case("true");
+        if let Some(ent) = world.get_entity_by_name_mut(target) {
+            ent.draggable = draggable;
+        }
+    }
+
+    pub fn current(unit: &str) -> f64 {
+        let dur = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default();
+        let total_secs = dur.as_secs();
+        match unit.to_lowercase().as_str() {
+            "second" | "seconds" => (total_secs % 60) as f64,
+            "minute" | "minutes" => ((total_secs / 60) % 60) as f64,
+            "hour" | "hours" => ((total_secs / 3600) % 24) as f64,
+            "day of week" | "day_of_week" => (((total_secs / 86400) + 4) % 7 + 1) as f64,
+            "date" | "days" => {
+                let days_since_1970 = total_secs / 86400;
+                ((days_since_1970 % 30) + 1) as f64
+            }
+            "month" => {
+                let days_since_1970 = total_secs / 86400;
+                (((days_since_1970 / 30) % 12) + 1) as f64
+            }
+            "year" => {
+                let years = 1970 + total_secs / (86400 * 365);
+                years as f64
+            }
+            _ => 0.0,
+        }
+    }
+
+    pub fn days_since_2000() -> f64 {
+        let dur = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default();
+        let secs_since_1970 = dur.as_secs() as f64;
+        let secs_from_1970_to_2000 = 946684800.0;
+        let days = (secs_since_1970 - secs_from_1970_to_2000) / 86400.0;
+        days.max(0.0)
+    }
+
+    pub fn get_username() -> String {
+        std::env::var("USERNAME")
+            .or_else(|_| std::env::var("USER"))
+            .unwrap_or_else(|_| "scratch_user".to_string())
+    }
 }
 
 fn color_matches(rgba: [f32; 4], query: &str) -> bool {

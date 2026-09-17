@@ -45,13 +45,17 @@ pub struct Entity {
     pub velocity: (f32, f32),
     pub rotation_style: RotationStyle,
     pub layer: i32,
+    pub draggable: bool,
+    pub costume_index: usize,
+    pub costume_name: String,
 }
 
 impl Entity {
     pub fn new(id: EntityId, name: impl Into<String>) -> Self {
+        let name_str = name.into();
         Self {
             id,
-            name: name.into(),
+            name: name_str.clone(),
             tags: Vec::new(),
             transform: Transform2D::default(),
             visible: true,
@@ -61,6 +65,9 @@ impl Entity {
             velocity: (0.0, 0.0),
             rotation_style: RotationStyle::default(),
             layer: 0,
+            draggable: false,
+            costume_index: 1,
+            costume_name: format!("{}_costume1", name_str),
         }
     }
 }

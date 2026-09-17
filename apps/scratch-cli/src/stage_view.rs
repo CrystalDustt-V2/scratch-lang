@@ -45,6 +45,16 @@ impl StageRenderer {
                 self.notifications.push((format!("📢 Broadcast: {}", msg), Instant::now()));
             }
         }
+        while let Some(txt) = runtime.world.tts_speech_queue.pop() {
+            self.notifications.push((format!("🗣️ TTS: \"{}\"", txt), Instant::now()));
+        }
+        while let Some(ev) = runtime.world.music_events.pop() {
+            if ev.kind == "note" {
+                self.notifications.push((format!("🎵 Note: MIDI {:.0} ({:.2} beats)", ev.value, ev.beats), Instant::now()));
+            } else {
+                self.notifications.push((format!("🥁 Drum: #{:.0} ({:.2} beats)", ev.value, ev.beats), Instant::now()));
+            }
+        }
         // Retain notifications from the last 2.5 seconds
         self.notifications.retain(|(_, time)| time.elapsed().as_secs_f32() < 2.5);
 
@@ -133,6 +143,34 @@ impl StageRenderer {
                 }
                 runtime.world.mouse_down = i.pointer.primary_down();
             });
+        }
+
+        // Render Pen Drawing Trails
+        for stroke in &runtime.world.pen_strokes {
+            let p1 = map_to_screen(stroke.x1, stroke.y1);
+            let p2 = map_to_screen(stroke.x2, stroke.y2);
+            let col = egui::Color32::from_rgba_premultiplied(
+                (stroke.color[0] * 255.0) as u8,
+                (stroke.color[1] * 255.0) as u8,
+                (stroke.color[2] * 255.0) as u8,
+                (stroke.color[3] * 255.0) as u8,
+            );
+            painter.line_segment([p1, p2], egui::Stroke::new(stroke.size * scale, col));
+        }
+
+        // Render Pen Stamps
+        for stamp in &runtime.world.pen_stamps {
+            let p = map_to_screen(stamp.x, stamp.y);
+            let stamp_w = (32.0 * stamp.scale_x * scale).max(12.0);
+            let stamp_h = (32.0 * stamp.scale_y * scale).max(12.0);
+            let stamp_rect = egui::Rect::from_center_size(p, egui::Vec2::new(stamp_w, stamp_h));
+            let col = egui::Color32::from_rgba_premultiplied(
+                (stamp.color[0] * 255.0 * 0.75) as u8,
+                (stamp.color[1] * 255.0 * 0.75) as u8,
+                (stamp.color[2] * 255.0 * 0.75) as u8,
+                (stamp.color[3] * 255.0 * 0.75) as u8,
+            );
+            painter.rect_filled(stamp_rect, 4.0, col);
         }
 
         // Render Entities

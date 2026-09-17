@@ -18,9 +18,24 @@ pub struct MovementSystem;
 
 impl MovementSystem {
     pub fn execute_move(world: &mut World, target: &str, dx: f32, dy: f32) {
-        if let Some(entity) = world.get_entity_by_name_mut(target) {
-            entity.transform.x += dx;
-            entity.transform.y += dy;
+        let prev = world.get_entity_by_name(target).map(|e| (e.transform.x, e.transform.y));
+        if let Some((px, py)) = prev {
+            if let Some(entity) = world.get_entity_by_name_mut(target) {
+                entity.transform.x += dx;
+                entity.transform.y += dy;
+            }
+            if world.pen_active_sprites.contains(target) && (dx != 0.0 || dy != 0.0) {
+                let color = world.pen_color;
+                let size = world.pen_size;
+                world.add_pen_stroke(crate::world::PenStroke {
+                    x1: px,
+                    y1: py,
+                    x2: px + dx,
+                    y2: py + dy,
+                    color,
+                    size,
+                });
+            }
         }
     }
 
@@ -38,9 +53,24 @@ impl MovementSystem {
     }
 
     pub fn execute_teleport(world: &mut World, target: &str, x: f32, y: f32) {
-        if let Some(entity) = world.get_entity_by_name_mut(target) {
-            entity.transform.x = x;
-            entity.transform.y = y;
+        let prev = world.get_entity_by_name(target).map(|e| (e.transform.x, e.transform.y));
+        if let Some((px, py)) = prev {
+            if let Some(entity) = world.get_entity_by_name_mut(target) {
+                entity.transform.x = x;
+                entity.transform.y = y;
+            }
+            if world.pen_active_sprites.contains(target) && (px != x || py != y) {
+                let color = world.pen_color;
+                let size = world.pen_size;
+                world.add_pen_stroke(crate::world::PenStroke {
+                    x1: px,
+                    y1: py,
+                    x2: x,
+                    y2: y,
+                    color,
+                    size,
+                });
+            }
         }
     }
 
@@ -87,10 +117,7 @@ impl MovementSystem {
             "random" | "random position" | "random_position" => {
                 let seed = world
                     .get_var("__random_seed")
-                    .map(|v| match v {
-                        RuntimeValue::Number(n) => *n,
-                        _ => 54321.0,
-                    })
+                    .and_then(|v| v.as_number())
                     .unwrap_or(54321.0);
                 let next_x = (seed * 1103515245.0 + 12345.0) % 2147483648.0;
                 let next_y = (next_x * 1103515245.0 + 12345.0) % 2147483648.0;
@@ -110,9 +137,24 @@ impl MovementSystem {
         };
 
         if let Some((x, y)) = dest_pos {
+            let prev = world.get_entity_by_name(target).map(|e| (e.transform.x, e.transform.y));
             if let Some(ent) = world.get_entity_by_name_mut(target) {
                 ent.transform.x = x;
                 ent.transform.y = y;
+            }
+            if let Some((px, py)) = prev {
+                if world.pen_active_sprites.contains(target) && (px != x || py != y) {
+                    let color = world.pen_color;
+                    let size = world.pen_size;
+                    world.add_pen_stroke(crate::world::PenStroke {
+                        x1: px,
+                        y1: py,
+                        x2: x,
+                        y2: y,
+                        color,
+                        size,
+                    });
+                }
             }
         }
     }
