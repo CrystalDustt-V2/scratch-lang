@@ -10,6 +10,7 @@ members = [
     "crates/scratch-project",
     "crates/scratch-scenes",
     "crates/scratch-assets",
+    "crates/scratch-lsp",
     "runtimes/native",
     "apps/scratch-cli",
 ]

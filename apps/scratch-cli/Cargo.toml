@@ -18,8 +18,10 @@ scratch-runtime = { path = "../../crates/scratch-runtime" }
 scratch-project = { path = "../../crates/scratch-project" }
 scratch-scenes = { path = "../../crates/scratch-scenes" }
 scratch-assets = { path = "../../crates/scratch-assets" }
+scratch-lsp = { path = "../../crates/scratch-lsp" }
 scratch-native = { path = "../../runtimes/native" }
 clap = { workspace = true }
+serde_json = { workspace = true }
 thiserror = { workspace = true }
 
 [features]

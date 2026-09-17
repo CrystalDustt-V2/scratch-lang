@@ -1,0 +1,97 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "scratch-lang",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#blocks"
+    },
+    {
+      "include": "#events"
+    },
+    {
+      "include": "#operators"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.number-sign.scratch",
+          "match": "#.*$"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.scratch",
+          "match": "\\b(when|if|repeat|return|def)\\b"
+        },
+        {
+          "name": "constant.language.boolean.scratch",
+          "match": "\\b(true|false)\\b"
+        }
+      ]
+    },
+    "events": {
+      "patterns": [
+        {
+          "name": "entity.name.function.event.scratch",
+          "match": "\\b(start|update|touches)\\b"
+        },
+        {
+          "name": "support.class.action.scratch",
+          "match": "\\baction\\.(down|press|up)\\b"
+        }
+      ]
+    },
+    "blocks": {
+      "patterns": [
+        {
+          "name": "support.function.builtin.scratch",
+          "match": "\\b(move|jump|stop|teleport|touching|damage|heal|respawn|collect|sound\\.play|camera\\.follow|background\\.set|scene\\.switch|scene\\.restart)\\b"
+        }
+      ]
+    },
+    "strings": {
+      "name": "string.quoted.double.scratch",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.scratch",
+          "match": "\\\\."
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.scratch",
+          "match": "\\b[0-9]+(\\.[0-9]+)?\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.scratch",
+          "match": "(\\+|-|\\*|/|%|==|!=|<=|>=|<|>|=|\\+=|-=)"
+        }
+      ]
+    }
+  },
+  "scopeName": "source.scratch"
+}

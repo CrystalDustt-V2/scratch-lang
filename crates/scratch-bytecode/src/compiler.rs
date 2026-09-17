@@ -5,13 +5,15 @@ use scratch_ir::{
 };
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, PartialEq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BytecodeProgram {
     pub events: Vec<BytecodeEventHandler>,
     pub functions: HashMap<String, Chunk>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BytecodeEventHandler {
     pub trigger: IrTrigger,
     pub chunk: Chunk,

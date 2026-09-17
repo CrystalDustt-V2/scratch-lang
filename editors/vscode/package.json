@@ -1,0 +1,46 @@
+{
+  "name": "scratch-lang",
+  "displayName": "scratch-lang",
+  "description": "Language support, syntax highlighting, and LSP integration for scratch-lang (.sch)",
+  "version": "0.1.0",
+  "publisher": "scratch-lang",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "scratch",
+        "aliases": [
+          "scratch-lang",
+          "scratch"
+        ],
+        "extensions": [
+          ".sch"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "scratch",
+        "scopeName": "source.scratch",
+        "path": "./syntaxes/scratch.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "scratch-lang Configuration",
+      "properties": {
+        "scratch.lsp.path": {
+          "type": "string",
+          "default": "scratch",
+          "description": "Path to the scratch CLI executable (which supports 'scratch lsp')"
+        }
+      }
+    }
+  }
+}

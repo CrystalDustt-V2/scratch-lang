@@ -1,0 +1,9 @@
+name: Platformer Adventure
+entry: src/main.sch
+resolution:
+  width: 1280
+  height: 720
+background: forest
+scenes:
+  - scenes/level1.scene
+  - scenes/level2.scene

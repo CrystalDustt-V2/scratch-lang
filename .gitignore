@@ -8,3 +8,5 @@ Thumbs.db
 .idea/
 .vscode/
 .agent-context/
+dist/
+**/dist/

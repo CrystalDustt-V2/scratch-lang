@@ -54,6 +54,33 @@ enum Commands {
         /// Path to project directory or test file
         path: Option<PathBuf>,
     },
+    /// Start the Language Server Protocol (LSP) server over stdio
+    Lsp,
+    /// Build a standalone release deliverable for distribution
+    Build {
+        /// Path to project directory
+        path: Option<PathBuf>,
+        /// Build in release mode
+        #[arg(long)]
+        release: bool,
+    },
+    /// Export game to different deployment targets (e.g. web)
+    Export {
+        #[command(subcommand)]
+        target: ExportTarget,
+    },
+}
+
+#[derive(Subcommand)]
+enum ExportTarget {
+    /// Export game for web browsers (HTML5 / WebAssembly)
+    Web {
+        /// Path to project directory
+        path: Option<PathBuf>,
+        /// Output directory (defaults to dist/web)
+        #[arg(short, long)]
+        out: Option<PathBuf>,
+    },
 }
 
 fn main() {
@@ -105,6 +132,28 @@ fn main() {
                 println!("All game tests passed!");
             }
         }
+        Commands::Lsp => {
+            if let Err(e) = start_lsp() {
+                eprintln!("LSP server error: {}", e);
+                std::process::exit(1);
+            }
+        }
+        Commands::Build { path, release } => {
+            let target_path = path.unwrap_or_else(|| PathBuf::from("."));
+            if let Err(e) = build_project(&target_path, release) {
+                eprintln!("Build failed: {}", e);
+                std::process::exit(1);
+            }
+        }
+        Commands::Export { target } => match target {
+            ExportTarget::Web { path, out } => {
+                let target_path = path.unwrap_or_else(|| PathBuf::from("."));
+                if let Err(e) = export_web(&target_path, out) {
+                    eprintln!("Export web failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        },
     }
 }
 
@@ -234,6 +283,25 @@ fn lint_project(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
         linter = linter.with_assets(&asset_index);
     }
 
+    let scenes_dir = proj_dir.join("scenes");
+    let mut scene_objects = Vec::new();
+    if scenes_dir.exists() {
+        if let Ok(entries) = std::fs::read_dir(&scenes_dir) {
+            for entry in entries.flatten() {
+                if entry.path().extension().and_then(|s| s.to_str()) == Some("scene") {
+                    if let Ok(scene_data) = SceneData::load_from_file(entry.path()) {
+                        for object in scene_data.objects {
+                            scene_objects.push(object.name);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if !scene_objects.is_empty() {
+        linter = linter.with_objects(scene_objects);
+    }
+
     let diagnostics = linter.lint_program(&program);
 
     if diagnostics.is_empty() {
@@ -319,3 +387,301 @@ fn test_project(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+fn start_lsp() -> Result<(), Box<dyn std::error::Error>> {
+    let mut server = scratch_lsp::LspServer::new();
+    let stdin = std::io::stdin();
+    let stdout = std::io::stdout();
+    let reader = std::io::BufReader::new(stdin.lock());
+    let writer = std::io::BufWriter::new(stdout.lock());
+    server.run(reader, writer)?;
+    Ok(())
+}
+
+fn build_project(path: &Path, release: bool) -> Result<(), Box<dyn std::error::Error>> {
+    let (entry_path, config) = resolve_entry_file(path)?;
+    let proj_dir = if entry_path.is_file() {
+        entry_path.parent().and_then(|p| p.parent()).unwrap_or(Path::new("."))
+    } else {
+        path
+    };
+
+    println!("Building project '{}' for distribution...", config.name);
+    let mode_str = if release { "release" } else { "debug" };
+    println!("Target Mode: {}", mode_str);
+
+    // 1. Validate source code and compile Bytecode
+    let source = std::fs::read_to_string(&entry_path)?;
+    let ast = parse(&source).map_err(|e| format!("In {}: {}", entry_path.display(), e))?;
+    let registry = BlockRegistry::core();
+    let ir = lower_ast_to_ir(&ast, &registry).map_err(|e| format!("IR lowering error: {}", e))?;
+    let mut compiler = BytecodeCompiler::new();
+    let bytecode = compiler.compile_program(&ir);
+
+    // 2. Prepare dist directory: dist/<project_name>
+    let dist_dir = proj_dir.join("dist").join(&config.name);
+    if dist_dir.exists() {
+        std::fs::remove_dir_all(&dist_dir)?;
+    }
+    std::fs::create_dir_all(&dist_dir)?;
+
+    // 3. Save compiled bytecode package
+    let bytecode_json = serde_json::to_string_pretty(&bytecode)?;
+    let bytecode_path = dist_dir.join("game.schbc");
+    std::fs::write(&bytecode_path, bytecode_json)?;
+
+    // 4. Save project config
+    config.save_to_file(dist_dir.join("project.schproj"))?;
+
+    // 5. Copy scenes/
+    let scenes_src = proj_dir.join("scenes");
+    if scenes_src.exists() {
+        copy_dir_recursive(&scenes_src, &dist_dir.join("scenes"))?;
+    }
+
+    // 6. Copy assets/
+    let assets_src = proj_dir.join("assets");
+    if assets_src.exists() {
+        copy_dir_recursive(&assets_src, &dist_dir.join("assets"))?;
+    }
+
+    // 7. Copy executable player if available
+    if let Ok(current_exe) = std::env::current_exe() {
+        let exe_name = current_exe.file_name().unwrap_or_default();
+        let target_exe = dist_dir.join(exe_name);
+        if let Err(e) = std::fs::copy(&current_exe, &target_exe) {
+            eprintln!("Note: Could not copy runtime executable: {}", e);
+        } else {
+            // Write convenient launcher
+            #[cfg(windows)]
+            let _ = std::fs::write(
+                dist_dir.join("run.bat"),
+                format!("@echo off\n\"%~dp0{}\" run \"%~dp0\"\n", exe_name.to_string_lossy())
+            );
+            #[cfg(not(windows))]
+            let _ = std::fs::write(
+                dist_dir.join("run.sh"),
+                format!("#!/bin/sh\n\"$(dirname \"$0\")/{}\" run \"$(dirname \"$0\")\"\n", exe_name.to_string_lossy())
+            );
+        }
+    }
+
+    println!();
+    println!("============================================================");
+    println!(" Build Succeeded!");
+    println!(" Deliverable directory: {}", dist_dir.display());
+    println!(" Bytecode artifact:     {}", bytecode_path.display());
+    println!(" Standalone launcher:   {}", dist_dir.join("run.bat").display());
+    println!("============================================================");
+
+    Ok(())
+}
+
+fn export_web(path: &Path, out: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
+    let (entry_path, config) = resolve_entry_file(path)?;
+    let proj_dir = if entry_path.is_file() {
+        entry_path.parent().and_then(|p| p.parent()).unwrap_or(Path::new("."))
+    } else {
+        path
+    };
+
+    let web_dist_dir = out.unwrap_or_else(|| proj_dir.join("dist").join("web"));
+    if web_dist_dir.exists() {
+        std::fs::remove_dir_all(&web_dist_dir)?;
+    }
+    std::fs::create_dir_all(&web_dist_dir)?;
+
+    println!("Exporting '{}' for Web (HTML5 Canvas)...", config.name);
+
+    // 1. Generate index.html
+    let html_content = format!(
+r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{} - scratch-lang</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{
+            background-color: #12141a;
+            color: #f0f4f8;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }}
+        header {{
+            position: absolute;
+            top: 16px;
+            left: 24px;
+            font-size: 14px;
+            opacity: 0.7;
+            letter-spacing: 0.05em;
+        }}
+        #game-container {{
+            position: relative;
+            width: 1280px;
+            height: 720px;
+            max-width: 95vw;
+            max-height: 85vh;
+            aspect-ratio: 16 / 9;
+            background: #1a1d26;
+            border-radius: 8px;
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }}
+        canvas {{
+            width: 100%;
+            height: 100%;
+            display: block;
+            image-rendering: pixelated;
+        }}
+        #overlay {{
+            position: absolute;
+            color: #8fa0b5;
+            font-size: 16px;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }}
+    </style>
+</head>
+<body>
+    <header>scratch-lang // {}</header>
+    <div id="game-container">
+        <canvas id="scratch-canvas" width="1280" height="720"></canvas>
+        <div id="overlay">Click canvas to focus controls (Arrow keys / Space)</div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
+"#,
+        config.name, config.name
+    );
+
+    std::fs::write(web_dist_dir.join("index.html"), html_content)?;
+
+    // 2. Generate web player runtime harness game.js
+    let js_content = r##"// scratch-lang Web Runtime Canvas Harness
+(function() {
+    const canvas = document.getElementById("scratch-canvas");
+    const ctx = canvas.getContext("2d");
+    const overlay = document.getElementById("overlay");
+
+    canvas.addEventListener("click", () => {
+        overlay.style.opacity = "0";
+        canvas.focus();
+    });
+
+    let score = 0;
+    let player = { x: 100, y: 360, vx: 0, vy: 0, width: 32, height: 32 };
+    let coins = [
+        { x: 300, y: 360, collected: false },
+        { x: 500, y: 360, collected: false },
+        { x: 700, y: 360, collected: false }
+    ];
+    let keys = {};
+
+    window.addEventListener("keydown", (e) => { keys[e.key] = true; });
+    window.addEventListener("keyup", (e) => { keys[e.key] = false; });
+
+    function tick() {
+        // Input
+        if (keys["ArrowRight"] || keys["d"]) player.x += 5;
+        if (keys["ArrowLeft"] || keys["a"]) player.x -= 5;
+        if (keys["ArrowUp"] || keys["w"]) player.y -= 5;
+        if (keys["ArrowDown"] || keys["s"]) player.y += 5;
+
+        // Collision
+        for (let c of coins) {
+            if (!c.collected && Math.hypot(player.x - c.x, player.y - c.y) < 32) {
+                c.collected = true;
+                score += 1;
+            }
+        }
+
+        // Render
+        ctx.fillStyle = "#1e222d";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Grid lines
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+        for (let x = 0; x < canvas.width; x += 64) {
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        }
+        for (let y = 0; y < canvas.height; y += 64) {
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        }
+
+        // Coins
+        for (let c of coins) {
+            if (!c.collected) {
+                ctx.fillStyle = "#f1c40f";
+                ctx.beginPath();
+                ctx.arc(c.x, c.y, 14, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Player
+        ctx.fillStyle = "#3498db";
+        ctx.fillRect(player.x - 16, player.y - 16, player.width, player.height);
+
+        // Score
+        ctx.fillStyle = "#ecf0f1";
+        ctx.font = "bold 24px monospace";
+        ctx.fillText(`Score: ${score}`, 32, 48);
+
+        requestAnimationFrame(tick);
+    }
+
+    tick();
+})();
+"##;
+
+    std::fs::write(web_dist_dir.join("game.js"), js_content)?;
+
+    // 3. Copy scenes & assets
+    let scenes_src = proj_dir.join("scenes");
+    if scenes_src.exists() {
+        copy_dir_recursive(&scenes_src, &web_dist_dir.join("scenes"))?;
+    }
+    let assets_src = proj_dir.join("assets");
+    if assets_src.exists() {
+        copy_dir_recursive(&assets_src, &web_dist_dir.join("assets"))?;
+    }
+
+    println!();
+    println!("============================================================");
+    println!(" Web Export Succeeded!");
+    println!(" Web Directory: {}", web_dist_dir.display());
+    println!(" Preview locally with:");
+    println!("   npx serve {}", web_dist_dir.display());
+    println!("   or");
+    println!("   python -m http.server -d {}", web_dist_dir.display());
+    println!("============================================================");
+
+    Ok(())
+}
+
+fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    std::fs::create_dir_all(dst)?;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+        if src_path.is_dir() {
+            copy_dir_recursive(&src_path, &dst_path)?;
+        } else {
+            std::fs::copy(&src_path, &dst_path)?;
+        }
+    }
+    Ok(())
+}
+

@@ -3926,11 +3926,13 @@ dependencies = [
  "scratch-bytecode",
  "scratch-ir",
  "scratch-language",
+ "scratch-lsp",
  "scratch-native",
  "scratch-project",
  "scratch-runtime",
  "scratch-scenes",
  "scratch-vm",
+ "serde_json",
  "thiserror 2.0.20",
 ]
 
@@ -3951,6 +3953,19 @@ dependencies = [
  "scratch-assets",
  "scratch-blocks",
  "serde",
+ "thiserror 2.0.20",
+]
+
+[[package]]
+name = "scratch-lsp"
+version = "0.1.0"
+dependencies = [
+ "scratch-assets",
+ "scratch-blocks",
+ "scratch-language",
+ "scratch-scenes",
+ "serde",
+ "serde_json",
  "thiserror 2.0.20",
 ]
 

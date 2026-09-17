@@ -1,0 +1,15 @@
+[package]
+name = "scratch-lsp"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+scratch-blocks = { path = "../scratch-blocks" }
+scratch-language = { path = "../scratch-language" }
+scratch-assets = { path = "../scratch-assets" }
+scratch-scenes = { path = "../scratch-scenes" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
