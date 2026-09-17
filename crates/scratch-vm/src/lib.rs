@@ -409,5 +409,58 @@ when start:
         assert_eq!(runtime.world.get_var("len_cleared").unwrap().as_number(), Some(0.0));
         assert_eq!(runtime.world.get_var("__list_visible_inventory").unwrap().as_bool(), true);
     }
+
+    #[test]
+    fn test_vm_dialogues_and_sensing() {
+        let code = r#"
+when start:
+    ask("What is your name?")
+    variable.show("score")
+    variable.hide("lives")
+    go_to_front(Player)
+    go_back_layers(Player, 3)
+    p_x = property_of("Player", "x position")
+    p_layer = property_of("Player", "layer")
+    touch_red = touching_color("Player", "red")
+    loud = get_loudness()
+"#;
+        let ast = parse(code).expect("parse ok");
+        let reg = BlockRegistry::core();
+        let ir = lower_ast_to_ir(&ast, &reg).expect("ir ok");
+
+        let mut compiler = BytecodeCompiler::new();
+        let program = compiler.compile_program(&ir);
+
+        let mut runtime = VmRuntime::new(program, reg);
+        runtime.world.spawn_entity("Player");
+        if let Some(p) = runtime.world.get_entity_by_name_mut("Player") {
+            p.transform.x = 45.0;
+            p.transform.y = 60.0;
+        }
+
+        // Spawn a red obstacle
+        runtime.world.spawn_entity("RedBlock");
+        if let Some(b) = runtime.world.get_entity_by_name_mut("RedBlock") {
+            b.transform.x = 45.0;
+            b.transform.y = 60.0;
+            b.tags.push("red".to_string());
+        }
+
+        runtime.start().expect("start ok");
+
+        assert_eq!(runtime.world.active_prompt, Some("What is your name?".to_string()));
+        assert!(runtime.world.is_variable_visible("score"));
+        assert!(!runtime.world.is_variable_visible("lives"));
+
+        assert_eq!(runtime.world.get_var("p_x").unwrap().as_number(), Some(45.0));
+        assert_eq!(runtime.world.get_var("p_layer").unwrap().as_number(), Some(-2.0)); // 1 - 3
+        assert_eq!(runtime.world.get_var("touch_red").unwrap().as_bool(), true);
+        assert_eq!(runtime.world.get_var("loud").unwrap().as_number(), Some(0.0));
+
+        // Submit answer
+        runtime.world.submit_answer("Alice");
+        assert_eq!(runtime.world.get_answer(), "Alice");
+        assert_eq!(runtime.world.active_prompt, None);
+    }
 }
 

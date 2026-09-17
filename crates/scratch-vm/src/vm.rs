@@ -1,6 +1,6 @@
 use scratch_blocks::BlockRegistry;
 use scratch_bytecode::{BytecodeValue, Chunk, OpCode};
-use scratch_runtime::{ListSystem, MovementSystem, RuntimeValue, World};
+use scratch_runtime::{ListSystem, MovementSystem, RuntimeValue, SensingSystem, World};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -868,6 +868,62 @@ impl Vm {
                     ListSystem::hide(world, list_name);
                 }
                 Ok(None)
+            }
+            "ask" => {
+                if let Some(q) = args.first().and_then(|v| as_str(v)) {
+                    world.ask(q);
+                }
+                Ok(None)
+            }
+            "get_answer" | "answer" => {
+                Ok(Some(BytecodeValue::String(world.get_answer().to_string())))
+            }
+            "variable.show" | "show_variable" => {
+                if let Some(name) = args.first().and_then(|v| as_str(v)) {
+                    world.show_variable(name);
+                }
+                Ok(None)
+            }
+            "variable.hide" | "hide_variable" => {
+                if let Some(name) = args.first().and_then(|v| as_str(v)) {
+                    world.hide_variable(name);
+                }
+                Ok(None)
+            }
+            "touching_color" => {
+                let target = args.first().and_then(|v| as_str(v)).unwrap_or("");
+                let color = args.get(1).and_then(|v| as_str(v)).unwrap_or("");
+                let res = SensingSystem::touching_color(world, target, color);
+                Ok(Some(BytecodeValue::Bool(res)))
+            }
+            "color_touching_color" => {
+                let c1 = args.first().and_then(|v| as_str(v)).unwrap_or("");
+                let c2 = args.get(1).and_then(|v| as_str(v)).unwrap_or("");
+                let res = SensingSystem::color_touching_color(world, c1, c2);
+                Ok(Some(BytecodeValue::Bool(res)))
+            }
+            "get_loudness" | "loudness" => {
+                let l = SensingSystem::get_loudness(world);
+                Ok(Some(BytecodeValue::Number(l)))
+            }
+            "go_to_front" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    SensingSystem::go_to_front(world, target);
+                }
+                Ok(None)
+            }
+            "go_back_layers" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    let count = args.get(1).and_then(|v| as_f64(v)).unwrap_or(1.0) as i32;
+                    SensingSystem::go_back_layers(world, target, count);
+                }
+                Ok(None)
+            }
+            "property_of" => {
+                let target = args.first().and_then(|v| as_str(v)).unwrap_or("");
+                let prop = args.get(1).and_then(|v| as_str(v)).unwrap_or("");
+                let val = SensingSystem::property_of(world, target, prop);
+                Ok(Some(runtime_to_bytecode(&val)))
             }
             _ => Ok(None),
         }

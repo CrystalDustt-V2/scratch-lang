@@ -19,6 +19,8 @@ pub struct World {
     pub camera_zoom: f32,
     pub pending_messages: Vec<String>,
     pub active_tweens: Vec<crate::movement::GlideTween>,
+    pub answer: String,
+    pub active_prompt: Option<String>,
 }
 
 impl Default for World {
@@ -45,7 +47,41 @@ impl World {
             camera_zoom: 1.0,
             pending_messages: Vec::new(),
             active_tweens: Vec::new(),
+            answer: String::new(),
+            active_prompt: None,
         }
+    }
+
+    pub fn ask(&mut self, question: impl Into<String>) {
+        let q = question.into();
+        self.active_prompt = Some(q.clone());
+        self.set_var("__active_prompt", RuntimeValue::String(q));
+    }
+
+    pub fn submit_answer(&mut self, ans: impl Into<String>) {
+        let a = ans.into();
+        self.answer = a.clone();
+        self.set_var("__answer", RuntimeValue::String(a));
+        self.active_prompt = None;
+        self.set_var("__active_prompt", RuntimeValue::Nil);
+    }
+
+    pub fn get_answer(&self) -> &str {
+        &self.answer
+    }
+
+    pub fn show_variable(&mut self, name: &str) {
+        self.set_var(format!("__var_visible_{}", name), RuntimeValue::Bool(true));
+    }
+
+    pub fn hide_variable(&mut self, name: &str) {
+        self.set_var(format!("__var_visible_{}", name), RuntimeValue::Bool(false));
+    }
+
+    pub fn is_variable_visible(&self, name: &str) -> bool {
+        self.get_var(&format!("__var_visible_{}", name))
+            .map(|v| v.as_bool())
+            .unwrap_or(false)
     }
 
     pub fn broadcast(&mut self, message: impl Into<String>) {

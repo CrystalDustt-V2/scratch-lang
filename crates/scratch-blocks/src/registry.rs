@@ -1042,6 +1042,108 @@ impl BlockRegistry {
                 .with_example("if list_contains(\"inventory\", \"key\"):")
         );
 
+        // === INTERACTIVE DIALOGUES & INPUT OVERLAYS ===
+
+        registry.register(
+            BlockDefinition::new("ask", BlockCategory::Sensing, "Ask a question and display prompt for user input", BlockType::Void, "DialogueSystem::ask")
+                .with_param("question", BlockType::String, false, None, "Question prompt string")
+                .with_doc("Displays an interactive text prompt asking the player a question and waits for their response.")
+                .with_example("ask(\"What is your name?\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("get_answer", BlockCategory::Sensing, "Get user text response to last ask prompt", BlockType::String, "DialogueSystem::getAnswer")
+                .with_doc("Returns the string response entered by the user to the most recent ask prompt.")
+                .with_example("player_name = get_answer()")
+        );
+
+        registry.register(
+            BlockDefinition::new("answer", BlockCategory::Sensing, "Get user text response to last ask prompt", BlockType::String, "DialogueSystem::getAnswer")
+                .with_doc("Alias for get_answer.")
+                .with_example("name = answer()")
+        );
+
+        registry.register(
+            BlockDefinition::new("variable.show", BlockCategory::Variables, "Display variable monitor on stage overlay", BlockType::Void, "VariableSystem::show")
+                .with_param("name", BlockType::String, false, None, "Variable name")
+                .with_doc("Makes the on-screen variable display monitor visible.")
+                .with_example("variable.show(\"score\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("variable.hide", BlockCategory::Variables, "Hide variable monitor from stage overlay", BlockType::Void, "VariableSystem::hide")
+                .with_param("name", BlockType::String, false, None, "Variable name")
+                .with_doc("Hides the on-screen variable display monitor.")
+                .with_example("variable.hide(\"score\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("show_variable", BlockCategory::Variables, "Show variable monitor", BlockType::Void, "VariableSystem::show")
+                .with_param("name", BlockType::String, false, None, "Variable name")
+                .with_doc("Alias for variable.show.")
+                .with_example("show_variable(\"score\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("hide_variable", BlockCategory::Variables, "Hide variable monitor", BlockType::Void, "VariableSystem::hide")
+                .with_param("name", BlockType::String, false, None, "Variable name")
+                .with_doc("Alias for variable.hide.")
+                .with_example("hide_variable(\"score\")")
+        );
+
+        // === PIXEL, COLOR SENSING & LAYERING ===
+
+        registry.register(
+            BlockDefinition::new("touching_color", BlockCategory::Sensing, "Check if sprite overlaps an object with specified color", BlockType::Boolean, "SensingSystem::touchingColor")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("color", BlockType::String, false, None, "Color name or hex string")
+                .with_doc("Returns true if target's collider touches any entity or boundary with the given color.")
+                .with_example("if touching_color(Player, \"red\"):")
+        );
+
+        registry.register(
+            BlockDefinition::new("color_touching_color", BlockCategory::Sensing, "Check if objects of first color touch objects of second color", BlockType::Boolean, "SensingSystem::colorTouchingColor")
+                .with_param("color1", BlockType::String, false, None, "First color")
+                .with_param("color2", BlockType::String, false, None, "Second color")
+                .with_doc("Returns true if any entity with color1 touches any entity with color2.")
+                .with_example("if color_touching_color(\"green\", \"red\"):")
+        );
+
+        registry.register(
+            BlockDefinition::new("get_loudness", BlockCategory::Sensing, "Get microphone input volume amplitude", BlockType::Number, "SensingSystem::getLoudness")
+                .with_doc("Returns microphone loudness volume (0 to 100).")
+                .with_example("vol = get_loudness()")
+        );
+
+        registry.register(
+            BlockDefinition::new("loudness", BlockCategory::Sensing, "Get microphone input volume amplitude", BlockType::Number, "SensingSystem::getLoudness")
+                .with_doc("Alias for get_loudness.")
+                .with_example("vol = loudness()")
+        );
+
+        registry.register(
+            BlockDefinition::new("go_to_front", BlockCategory::Looks, "Bring sprite to top rendering layer", BlockType::Void, "LooksSystem::goToFront")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_doc("Places the sprite in front of all other sprites on stage.")
+                .with_example("go_to_front(Player)")
+        );
+
+        registry.register(
+            BlockDefinition::new("go_back_layers", BlockCategory::Looks, "Move sprite back by number of layers", BlockType::Void, "LooksSystem::goBackLayers")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("count", BlockType::Number, false, Some("1"), "Number of layers to move back")
+                .with_doc("Pushes sprite backwards in visual render order.")
+                .with_example("go_back_layers(Player, 2)")
+        );
+
+        registry.register(
+            BlockDefinition::new("property_of", BlockCategory::Sensing, "Introspect attribute or variable of a sprite", BlockType::Any, "SensingSystem::propertyOf")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("property", BlockType::String, false, None, "Property name ('x position', 'y position', 'direction', 'costume #', 'size', 'volume')")
+                .with_doc("Reads a specified attribute or variable of another sprite.")
+                .with_example("enemy_x = property_of(Enemy, \"x position\")")
+        );
+
         registry
     }
 

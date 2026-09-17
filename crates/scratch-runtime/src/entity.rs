@@ -44,6 +44,7 @@ pub struct Entity {
     pub health: f64,
     pub velocity: (f32, f32),
     pub rotation_style: RotationStyle,
+    pub layer: i32,
 }
 
 impl Entity {
@@ -59,6 +60,7 @@ impl Entity {
             health: 3.0,
             velocity: (0.0, 0.0),
             rotation_style: RotationStyle::default(),
+            layer: 0,
         }
     }
 }

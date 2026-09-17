@@ -1,5 +1,6 @@
 use crate::list::ListSystem;
 use crate::movement::MovementSystem;
+use crate::sensing::SensingSystem;
 use crate::value::RuntimeValue;
 use crate::world::World;
 use scratch_blocks::BlockRegistry;
@@ -295,6 +296,32 @@ impl Executor {
                     ListSystem::hide(world, list_name);
                 }
             }
+            "ask" => {
+                if let Some(q) = args.first().and_then(|v| v.as_string()) {
+                    world.ask(q);
+                }
+            }
+            "variable.show" | "show_variable" => {
+                if let Some(name) = args.first().and_then(|v| v.as_string()) {
+                    world.show_variable(name);
+                }
+            }
+            "variable.hide" | "hide_variable" => {
+                if let Some(name) = args.first().and_then(|v| v.as_string()) {
+                    world.hide_variable(name);
+                }
+            }
+            "go_to_front" => {
+                if let Some(target) = args.first().and_then(|v| v.as_string()) {
+                    SensingSystem::go_to_front(world, target);
+                }
+            }
+            "go_back_layers" => {
+                if let Some(target) = args.first().and_then(|v| v.as_string()) {
+                    let count = args.get(1).and_then(|v| v.as_number()).unwrap_or(1.0) as i32;
+                    SensingSystem::go_back_layers(world, target, count);
+                }
+            }
             _ => {
                 // Other runtime blocks like sound.play
             }
@@ -338,6 +365,27 @@ impl Executor {
                 let list_name = args.first().and_then(|v| v.as_string()).unwrap_or("");
                 let item = args.get(1).unwrap_or(&RuntimeValue::Nil);
                 RuntimeValue::Bool(ListSystem::contains(world, list_name, item))
+            }
+            "get_answer" | "answer" => {
+                RuntimeValue::String(world.get_answer().to_string())
+            }
+            "touching_color" => {
+                let target = args.first().and_then(|v| v.as_string()).unwrap_or("");
+                let color = args.get(1).and_then(|v| v.as_string()).unwrap_or("");
+                RuntimeValue::Bool(SensingSystem::touching_color(world, target, color))
+            }
+            "color_touching_color" => {
+                let c1 = args.first().and_then(|v| v.as_string()).unwrap_or("");
+                let c2 = args.get(1).and_then(|v| v.as_string()).unwrap_or("");
+                RuntimeValue::Bool(SensingSystem::color_touching_color(world, c1, c2))
+            }
+            "get_loudness" | "loudness" => {
+                RuntimeValue::Number(SensingSystem::get_loudness(world))
+            }
+            "property_of" => {
+                let target = args.first().and_then(|v| v.as_string()).unwrap_or("");
+                let prop = args.get(1).and_then(|v| v.as_string()).unwrap_or("");
+                SensingSystem::property_of(world, target, prop)
             }
             _ => RuntimeValue::Nil,
         }

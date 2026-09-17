@@ -3,6 +3,7 @@ pub mod events;
 pub mod executor;
 pub mod list;
 pub mod movement;
+pub mod sensing;
 pub mod value;
 pub mod world;
 
@@ -11,6 +12,7 @@ pub use events::EventDispatcher;
 pub use executor::Executor;
 pub use list::ListSystem;
 pub use movement::MovementSystem;
+pub use sensing::SensingSystem;
 pub use value::RuntimeValue;
 pub use world::World;
 
