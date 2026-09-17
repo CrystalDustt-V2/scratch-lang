@@ -1,21 +1,27 @@
 use clap::{Parser, Subcommand};
-use scratch_assets::AssetIndex;
 use scratch_blocks::BlockRegistry;
 use scratch_bytecode::BytecodeCompiler;
 use scratch_ir::lower_ast_to_ir;
-use scratch_language::{format_source, parse, Linter};
+use scratch_language::parse;
 use scratch_native::NativeRunner;
 use scratch_project::ProjectConfig;
 use scratch_runtime::Runtime;
-use scratch_scenes::{SceneData, SceneManager};
-use scratch_vm::VmRuntime;
+use scratch_scenes::SceneData;
 use std::path::{Path, PathBuf};
 
+mod config;
+mod package;
+mod project_cmd;
+mod sdk;
 mod studio;
+mod templates;
+
+use config::CliConfig;
 
 #[derive(Parser)]
 #[command(name = "scratch")]
-#[command(about = "scratch-lang: Beginner-first, code-based 2D game platform", long_about = None)]
+#[command(about = "Command-line interface for Scratch", long_about = None)]
+#[command(version = "0.1.0")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -23,82 +29,202 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Create a new scratch-lang project
+    /// Initialize a new Scratch project
     New {
-        /// Project name or path
+        /// Project name or directory
         name: String,
+        /// Starter template (starter, platformer, coins, dialogue, motion, lists)
+        #[arg(short, long)]
+        template: Option<String>,
+        /// Destination path (defaults to project name)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+        /// Project author
+        #[arg(long)]
+        author: Option<String>,
+        /// Project display title
+        #[arg(long)]
+        title: Option<String>,
     },
-    /// Run a scratch-lang game
+    /// Options for configuring Scratch CLI
+    Config {
+        #[command(subcommand)]
+        command: Option<ConfigSubcommand>,
+    },
+    /// Options for installing & managing the Scratch SDK
+    Sdk {
+        #[command(subcommand)]
+        command: Option<SdkSubcommand>,
+    },
+    /// Tools for working with the current project
+    Project {
+        #[command(subcommand)]
+        command: ProjectSubcommand,
+    },
+    /// Options for working with .scratch packages
+    Package {
+        #[command(subcommand)]
+        command: PackageSubcommand,
+    },
+    /// Run preview of the project in a popup window
     Run {
         /// Path to project directory or .sch file (defaults to current directory)
         path: Option<PathBuf>,
-    },
-    /// Check project or script for errors without running
-    Check {
-        /// Path to project directory or .sch file (defaults to current directory)
-        path: Option<PathBuf>,
-    },
-    /// Lint .sch files for common game errors and educational guidance
-    Lint {
-        /// Path to project directory or .sch file (defaults to current directory)
-        path: Option<PathBuf>,
-    },
-    /// Format .sch source files deterministically
-    Format {
-        /// Path to project directory or .sch file (defaults to current directory)
-        path: Option<PathBuf>,
-        /// Check formatting without writing changes
+        /// Force popup app window preview
         #[arg(long)]
-        check: bool,
+        preview: bool,
+        /// Run headlessly in terminal without graphical window
+        #[arg(long)]
+        headless: bool,
+        /// Port for preview server
+        #[arg(short, long)]
+        port: Option<u16>,
+        /// Frame rate cap
+        #[arg(long)]
+        fps: Option<u32>,
     },
-    /// Run automated game tests
-    Test {
-        /// Path to project directory or test file
-        path: Option<PathBuf>,
-    },
-    /// Start the Language Server Protocol (LSP) server over stdio
-    Lsp,
-    /// Build a standalone release deliverable for distribution
+    /// Builds the project at the current directory
     Build {
         /// Path to project directory
         path: Option<PathBuf>,
         /// Build in release mode
         #[arg(long)]
         release: bool,
+        /// Target output format (native, web, studio, bytecode, all)
+        #[arg(short, long, default_value = "native")]
+        target: String,
+        /// Custom output directory
+        #[arg(short, long)]
+        out: Option<PathBuf>,
     },
-    /// Export game to different deployment targets (e.g. web)
-    Export {
-        #[command(subcommand)]
-        target: ExportTarget,
-    },
-    /// Launch interactive in-browser Scratch Studio IDE and live playground
-    Studio {
-        /// Path to project directory or .sch file (defaults to current directory)
+
+    // Top-level shortcuts (hidden from help list for clean Geode styling)
+    #[command(hide = true)]
+    Check { path: Option<PathBuf> },
+    #[command(hide = true)]
+    Lint { path: Option<PathBuf> },
+    #[command(hide = true)]
+    Format { path: Option<PathBuf>, #[arg(long)] check: bool },
+    #[command(hide = true)]
+    Test { path: Option<PathBuf> },
+    #[command(hide = true)]
+    Studio { path: Option<PathBuf>, #[arg(short, long, default_value_t = 8080)] port: u16, #[arg(long)] no_open: bool },
+    #[command(hide = true)]
+    Lsp,
+    #[command(hide = true)]
+    Export { #[command(subcommand)] target: ExportTarget },
+}
+
+#[derive(Subcommand)]
+pub enum ConfigSubcommand {
+    /// Get configuration value by key
+    Get { key: String },
+    /// Set configuration value by key
+    Set { key: String, value: String },
+    /// List all configuration values and descriptions
+    List,
+    /// Reset configuration to factory defaults
+    Reset,
+}
+
+#[derive(Subcommand)]
+pub enum SdkSubcommand {
+    /// Detailed info about installed SDK, compiler, toolchains
+    Info,
+    /// Print installed SDK version
+    Version,
+    /// Print path to Scratch SDK cache / directory
+    Path,
+    /// Verify SDK component integrity and subsystems
+    Check,
+}
+
+#[derive(Subcommand)]
+pub enum ProjectSubcommand {
+    /// Check project or script for errors without running
+    Check { path: Option<PathBuf> },
+    /// Lint .sch files for common game errors and educational guidance
+    Lint { path: Option<PathBuf> },
+    /// Format .sch source files deterministically
+    Format {
         path: Option<PathBuf>,
-        /// Port to listen on (defaults to 8080)
+        #[arg(long)]
+        check: bool,
+    },
+    /// Run automated game simulations and assertions
+    Test { path: Option<PathBuf> },
+    /// Display project metadata, scene listing, asset counts, line statistics
+    Info { path: Option<PathBuf> },
+    /// Create a new .scene file in scenes/
+    AddScene {
+        /// Name of the new scene (e.g. level2)
+        name: String,
+        /// Target project directory
+        path: Option<PathBuf>,
+    },
+    /// Add an asset file into the project assets directory
+    AddAsset {
+        /// Path to asset file (image, audio, font)
+        asset_path: PathBuf,
+        /// Asset category (sprite, sound, music, font)
+        #[arg(short, long)]
+        asset_type: Option<String>,
+        /// Target project directory
+        path: Option<PathBuf>,
+    },
+    /// Launch interactive in-browser Scratch Studio IDE & live playground
+    Studio {
+        path: Option<PathBuf>,
         #[arg(short, long, default_value_t = 8080)]
         port: u16,
-        /// Do not open the default browser automatically
         #[arg(long)]
         no_open: bool,
     },
 }
 
 #[derive(Subcommand)]
-enum ExportTarget {
-    /// Export game for web browsers (HTML5 / WebAssembly)
-    Web {
-        /// Path to project directory
+pub enum PackageSubcommand {
+    /// Package project into a standalone .scratch archive bundle
+    Pack {
         path: Option<PathBuf>,
-        /// Output directory (defaults to dist/web)
         #[arg(short, long)]
         out: Option<PathBuf>,
     },
-    /// Export standalone in-browser Scratch Studio IDE
-    Studio {
-        /// Path to project directory
+    /// Extract a .scratch package archive into a project directory
+    Unpack {
+        /// Path to .scratch package file
+        file: PathBuf,
+        /// Destination directory
+        #[arg(short, long)]
+        out: Option<PathBuf>,
+    },
+    /// Inspect metadata and contents of a .scratch package
+    Info {
+        file: PathBuf,
+    },
+    /// Export game for web browser canvas deployment
+    ExportWeb {
         path: Option<PathBuf>,
-        /// Output directory (defaults to dist/studio)
+        #[arg(short, long)]
+        out: Option<PathBuf>,
+    },
+    /// Export standalone Scratch Studio IDE bundle
+    ExportStudio {
+        path: Option<PathBuf>,
+        #[arg(short, long)]
+        out: Option<PathBuf>,
+    },
+}
+
+#[derive(Subcommand)]
+enum ExportTarget {
+    Web {
+        path: Option<PathBuf>,
+        #[arg(short, long)]
+        out: Option<PathBuf>,
+    },
+    Studio {
+        path: Option<PathBuf>,
         #[arg(short, long)]
         out: Option<PathBuf>,
     },
@@ -106,63 +232,223 @@ enum ExportTarget {
 
 fn main() {
     let cli = Cli::parse();
+    let mut config = CliConfig::load();
 
     match cli.command {
-        Commands::New { name } => {
-            if let Err(e) = create_new_project(&name) {
+        Commands::New { name, template, path, author, title } => {
+            let tmpl = template.unwrap_or_else(|| config.default_template.clone());
+            let aut = author.unwrap_or_else(|| config.default_author.clone());
+            let dest = path.unwrap_or_else(|| PathBuf::from(&name));
+
+            if let Err(e) = create_new_project(&dest, &name, &tmpl, &aut, title.as_deref()) {
                 eprintln!("Error creating project: {}", e);
                 std::process::exit(1);
             }
         }
-        Commands::Run { path } => {
+        Commands::Config { command } => {
+            match command.unwrap_or(ConfigSubcommand::List) {
+                ConfigSubcommand::Get { key } => {
+                    if let Some(val) = config.get(&key) {
+                        println!("{}", val);
+                    } else {
+                        eprintln!("Config key '{}' not found", key);
+                        std::process::exit(1);
+                    }
+                }
+                ConfigSubcommand::Set { key, value } => {
+                    if let Err(e) = config.set(&key, &value) {
+                        eprintln!("Error setting config: {}", e);
+                        std::process::exit(1);
+                    } else {
+                        println!("Set {} = {}", key, value);
+                    }
+                }
+                ConfigSubcommand::List => {
+                    config.list();
+                }
+                ConfigSubcommand::Reset => {
+                    if let Err(e) = config.reset() {
+                        eprintln!("Error resetting config: {}", e);
+                        std::process::exit(1);
+                    } else {
+                        println!("Config reset to defaults.");
+                    }
+                }
+            }
+        }
+        Commands::Sdk { command } => {
+            match command.unwrap_or(SdkSubcommand::Info) {
+                SdkSubcommand::Info => sdk::print_info(),
+                SdkSubcommand::Version => sdk::print_version(),
+                SdkSubcommand::Path => sdk::print_sdk_path(),
+                SdkSubcommand::Check => {
+                    if let Err(e) = sdk::run_sdk_check() {
+                        eprintln!("SDK check failed: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+            }
+        }
+        Commands::Project { command } => match command {
+            ProjectSubcommand::Check { path } => {
+                let target = path.unwrap_or_else(|| PathBuf::from("."));
+                if let Err(e) = project_cmd::check_project(&target) {
+                    eprintln!("Check failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
+            ProjectSubcommand::Lint { path } => {
+                let target = path.unwrap_or_else(|| PathBuf::from("."));
+                if let Err(e) = project_cmd::lint_project(&target) {
+                    eprintln!("Lint failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
+            ProjectSubcommand::Format { path, check } => {
+                let target = path.unwrap_or_else(|| PathBuf::from("."));
+                if let Err(e) = project_cmd::format_project(&target, check) {
+                    eprintln!("Format failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
+            ProjectSubcommand::Test { path } => {
+                let target = path.unwrap_or_else(|| PathBuf::from("."));
+                if let Err(e) = project_cmd::test_project(&target) {
+                    eprintln!("Test failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
+            ProjectSubcommand::Info { path } => {
+                let target = path.unwrap_or_else(|| PathBuf::from("."));
+                if let Err(e) = project_cmd::project_info(&target) {
+                    eprintln!("Project info failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
+            ProjectSubcommand::AddScene { name, path } => {
+                let target = path.unwrap_or_else(|| PathBuf::from("."));
+                if let Err(e) = project_cmd::add_scene(&target, &name) {
+                    eprintln!("Add scene failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
+            ProjectSubcommand::AddAsset { asset_path, asset_type, path } => {
+                let target = path.unwrap_or_else(|| PathBuf::from("."));
+                if let Err(e) = project_cmd::add_asset(&target, &asset_path, asset_type.as_deref()) {
+                    eprintln!("Add asset failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
+            ProjectSubcommand::Studio { path, port, no_open } => {
+                let target = path.unwrap_or_else(|| PathBuf::from("."));
+                if let Err(e) = studio::start_studio(&target, port, no_open) {
+                    eprintln!("Studio error: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        },
+        Commands::Package { command } => match command {
+            PackageSubcommand::Pack { path, out } => {
+                let target = path.unwrap_or_else(|| PathBuf::from("."));
+                if let Err(e) = package::pack_project(&target, out) {
+                    eprintln!("Pack failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
+            PackageSubcommand::Unpack { file, out } => {
+                if let Err(e) = package::unpack_package(&file, out) {
+                    eprintln!("Unpack failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
+            PackageSubcommand::Info { file } => {
+                if let Err(e) = package::inspect_package(&file) {
+                    eprintln!("Package inspect failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
+            PackageSubcommand::ExportWeb { path, out } => {
+                let target = path.unwrap_or_else(|| PathBuf::from("."));
+                if let Err(e) = export_web(&target, out) {
+                    eprintln!("Export web failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
+            PackageSubcommand::ExportStudio { path, out } => {
+                let target = path.unwrap_or_else(|| PathBuf::from("."));
+                if let Err(e) = export_studio(&target, out) {
+                    eprintln!("Export studio failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        },
+        Commands::Run { path, preview: _, headless, port, fps: _ } => {
             let target_path = path.unwrap_or_else(|| PathBuf::from("."));
-            if let Err(e) = run_project(&target_path) {
-                eprintln!("Error running project: {}", e);
+            let is_headless = headless || config.preview_mode == "headless";
+
+            if is_headless {
+                println!("Running headless preview simulation...");
+                if let Err(e) = run_project_headless(&target_path) {
+                    eprintln!("Error running headless project: {}", e);
+                    std::process::exit(1);
+                }
+            } else {
+                // Popup window preview (default)
+                let p = port.unwrap_or(config.studio_port);
+                println!("Launching native popup preview window...");
+                if let Err(e) = run_preview_popup(&target_path, p) {
+                    eprintln!("Error launching popup preview: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Commands::Build { path, release, target, out } => {
+            let target_path = path.unwrap_or_else(|| PathBuf::from("."));
+            if let Err(e) = build_project(&target_path, release, &target, out) {
+                eprintln!("Build failed: {}", e);
                 std::process::exit(1);
             }
         }
+
+        // Hidden aliases for backward compatibility
         Commands::Check { path } => {
-            let target_path = path.unwrap_or_else(|| PathBuf::from("."));
-            if let Err(e) = check_project(&target_path) {
+            let target = path.unwrap_or_else(|| PathBuf::from("."));
+            if let Err(e) = project_cmd::check_project(&target) {
                 eprintln!("Check failed: {}", e);
                 std::process::exit(1);
-            } else {
-                println!("All checks passed! No errors found.");
             }
         }
         Commands::Lint { path } => {
-            let target_path = path.unwrap_or_else(|| PathBuf::from("."));
-            if let Err(e) = lint_project(&target_path) {
+            let target = path.unwrap_or_else(|| PathBuf::from("."));
+            if let Err(e) = project_cmd::lint_project(&target) {
                 eprintln!("Lint failed: {}", e);
                 std::process::exit(1);
             }
         }
         Commands::Format { path, check } => {
-            let target_path = path.unwrap_or_else(|| PathBuf::from("."));
-            if let Err(e) = format_project(&target_path, check) {
+            let target = path.unwrap_or_else(|| PathBuf::from("."));
+            if let Err(e) = project_cmd::format_project(&target, check) {
                 eprintln!("Format failed: {}", e);
                 std::process::exit(1);
             }
         }
         Commands::Test { path } => {
-            let target_path = path.unwrap_or_else(|| PathBuf::from("."));
-            if let Err(e) = test_project(&target_path) {
-                eprintln!("Tests failed: {}", e);
+            let target = path.unwrap_or_else(|| PathBuf::from("."));
+            if let Err(e) = project_cmd::test_project(&target) {
+                eprintln!("Test failed: {}", e);
                 std::process::exit(1);
-            } else {
-                println!("All game tests passed!");
+            }
+        }
+        Commands::Studio { path, port, no_open } => {
+            let target = path.unwrap_or_else(|| PathBuf::from("."));
+            if let Err(e) = studio::start_studio(&target, port, no_open) {
+                eprintln!("Studio error: {}", e);
+                std::process::exit(1);
             }
         }
         Commands::Lsp => {
             if let Err(e) = start_lsp() {
                 eprintln!("LSP server error: {}", e);
-                std::process::exit(1);
-            }
-        }
-        Commands::Build { path, release } => {
-            let target_path = path.unwrap_or_else(|| PathBuf::from("."));
-            if let Err(e) = build_project(&target_path, release) {
-                eprintln!("Build failed: {}", e);
                 std::process::exit(1);
             }
         }
@@ -182,202 +468,60 @@ fn main() {
                 }
             }
         },
-        Commands::Studio { path, port, no_open } => {
-            let target_path = path.unwrap_or_else(|| PathBuf::from("."));
-            if let Err(e) = studio::start_studio(&target_path, port, no_open) {
-                eprintln!("Studio error: {}", e);
-                std::process::exit(1);
-            }
-        }
     }
 }
 
-fn create_new_project(name: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let project_dir = Path::new(name);
-    if project_dir.exists() {
-        return Err(format!("Directory '{}' already exists", name).into());
+fn create_new_project(
+    dest_path: &Path,
+    name: &str,
+    template: &str,
+    author: &str,
+    _title: Option<&str>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if dest_path.exists() && dest_path.read_dir()?.next().is_some() {
+        return Err(format!("Directory '{}' already exists and is not empty", dest_path.display()).into());
     }
 
-    std::fs::create_dir_all(project_dir.join("src"))?;
-    std::fs::create_dir_all(project_dir.join("scenes"))?;
-    std::fs::create_dir_all(project_dir.join("assets/sprites"))?;
-    std::fs::create_dir_all(project_dir.join("assets/sounds"))?;
+    std::fs::create_dir_all(dest_path.join("src"))?;
+    std::fs::create_dir_all(dest_path.join("scenes"))?;
+    std::fs::create_dir_all(dest_path.join("assets/sprites"))?;
+    std::fs::create_dir_all(dest_path.join("assets/sounds"))?;
+    std::fs::create_dir_all(dest_path.join("assets/music"))?;
+    std::fs::create_dir_all(dest_path.join("assets/fonts"))?;
 
     let config = ProjectConfig {
         name: name.to_string(),
         entry: "src/main.sch".to_string(),
+        background: "white".to_string(),
         ..Default::default()
     };
-    config.save_to_file(project_dir.join("project.schproj"))?;
+    config.save_to_file(dest_path.join("project.schproj"))?;
 
-    // Create default main.scene
+    // Create default scene
     let default_scene = SceneData::default();
-    default_scene.save_to_file(project_dir.join("scenes/main.scene"))?;
+    default_scene.save_to_file(dest_path.join("scenes/main.scene"))?;
 
-    let sample_sch = r#"when start:
-    score = 0
-    background.set("white")
+    // Populate starter code from chosen template
+    let template_code = templates::get_template_code(template);
+    std::fs::write(dest_path.join("src/main.sch"), template_code)?;
 
-when action.down("right"):
-    move(Player, 5)
-
-when action.down("left"):
-    move(Player, -5)
-
-when action.press("jump"):
-    jump(Player, 12)
-"#;
-    std::fs::write(project_dir.join("src/main.sch"), sample_sch)?;
-
-    println!("Created new scratch-lang project '{}'!", name);
-    println!("Run it with:");
-    println!("  cd {}", name);
-    println!("  scratch run");
+    println!("============================================================");
+    println!(" Initialized new Scratch project '{}'!", name);
+    println!(" Template:    {}", template);
+    println!(" Directory:   {}", dest_path.display());
+    println!(" Author:      {}", author);
+    println!();
+    println!(" Next steps:");
+    println!("   cd {}", dest_path.display());
+    println!("   scratch run            # Open popup window preview");
+    println!("   scratch project studio # Open Scratch Studio web IDE");
+    println!("============================================================");
 
     Ok(())
 }
 
-fn resolve_entry_file(path: &Path) -> Result<(PathBuf, ProjectConfig), Box<dyn std::error::Error>> {
-    if path.is_file() {
-        if path.extension().and_then(|s| s.to_str()) == Some("sch") {
-            let config = ProjectConfig {
-                name: path.file_stem().unwrap().to_string_lossy().to_string(),
-                entry: path.to_string_lossy().to_string(),
-                ..Default::default()
-            };
-            return Ok((path.to_path_buf(), config));
-        } else if path.file_name().and_then(|s| s.to_str()) == Some("project.schproj") {
-            let config = ProjectConfig::load_from_file(path)?;
-            let parent = path.parent().unwrap_or(Path::new("."));
-            let entry = parent.join(&config.entry);
-            return Ok((entry, config));
-        }
-    }
-
-    let proj_file = path.join("project.schproj");
-    if proj_file.exists() {
-        let config = ProjectConfig::load_from_file(&proj_file)?;
-        let entry = path.join(&config.entry);
-        return Ok((entry, config));
-    }
-
-    let main_sch = path.join("src/main.sch");
-    if main_sch.exists() {
-        let config = ProjectConfig::default();
-        return Ok((main_sch, config));
-    }
-
-    let direct_main = path.join("main.sch");
-    if direct_main.exists() {
-        let config = ProjectConfig::default();
-        return Ok((direct_main, config));
-    }
-
-    Err(format!("Could not find project.schproj or main.sch in '{}'", path.display()).into())
-}
-
-fn check_project(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let (entry_path, _config) = resolve_entry_file(path)?;
-    let source = std::fs::read_to_string(&entry_path)?;
-
-    let ast = parse(&source).map_err(|e| format!("In {}: {}", entry_path.display(), e))?;
-    let registry = BlockRegistry::core();
-    let ir = lower_ast_to_ir(&ast, &registry).map_err(|e| format!("IR lowering in {}: {}", entry_path.display(), e))?;
-    let mut compiler = BytecodeCompiler::new();
-    let bytecode = compiler.compile_program(&ir);
-
-    let total_instructions: usize = bytecode.events.iter().map(|e| e.chunk.instructions.len()).sum();
-    println!("Validated: {}", entry_path.display());
-    println!("  AST Events: {}", ast.events.len());
-    println!("  Game IR Events: {}", ir.events.len());
-    println!("  Bytecode Events: {} (Total instructions: {})", bytecode.events.len(), total_instructions);
-    Ok(())
-}
-
-fn lint_project(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let (entry_path, _config) = resolve_entry_file(path)?;
-    let source = std::fs::read_to_string(&entry_path)?;
-
-    let proj_dir = if entry_path.is_file() {
-        entry_path.parent().and_then(|p| p.parent()).unwrap_or(Path::new("."))
-    } else {
-        path
-    };
-
-    let assets_dir = proj_dir.join("assets");
-    let mut asset_index = AssetIndex::new();
-    if assets_dir.exists() {
-        asset_index.scan_directory(&assets_dir);
-    }
-
-    let registry = BlockRegistry::core();
-    let program = parse(&source).map_err(|e| format!("Parse error: {}", e))?;
-
-    let mut linter = Linter::new(&registry);
-    if assets_dir.exists() {
-        linter = linter.with_assets(&asset_index);
-    }
-
-    let scenes_dir = proj_dir.join("scenes");
-    let mut scene_objects = Vec::new();
-    if scenes_dir.exists() {
-        if let Ok(entries) = std::fs::read_dir(&scenes_dir) {
-            for entry in entries.flatten() {
-                if entry.path().extension().and_then(|s| s.to_str()) == Some("scene") {
-                    if let Ok(scene_data) = SceneData::load_from_file(entry.path()) {
-                        for object in scene_data.objects {
-                            scene_objects.push(object.name);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    if !scene_objects.is_empty() {
-        linter = linter.with_objects(scene_objects);
-    }
-
-    let diagnostics = linter.lint_program(&program);
-
-    if diagnostics.is_empty() {
-        println!("No lint issues found in {}! Clean code.", entry_path.display());
-        return Ok(());
-    }
-
-    println!("Found {} diagnostic(s) in {}:\n", diagnostics.len(), entry_path.display());
-    for diag in &diagnostics {
-        println!("{}", diag.render(&source));
-    }
-
-    Err(format!("{} lint issue(s) detected", diagnostics.len()).into())
-}
-
-fn format_project(path: &Path, check_only: bool) -> Result<(), Box<dyn std::error::Error>> {
-    let (entry_path, _config) = resolve_entry_file(path)?;
-    let source = std::fs::read_to_string(&entry_path)?;
-
-    let formatted = format_source(&source).map_err(|e| format!("Format error: {}", e))?;
-
-    if check_only {
-        if source == formatted {
-            println!("File {} is correctly formatted.", entry_path.display());
-            Ok(())
-        } else {
-            Err(format!("File {} is not formatted. Run 'scratch format' to format.", entry_path.display()).into())
-        }
-    } else {
-        if source != formatted {
-            std::fs::write(&entry_path, &formatted)?;
-            println!("Formatted: {}", entry_path.display());
-        } else {
-            println!("Already formatted: {}", entry_path.display());
-        }
-        Ok(())
-    }
-}
-
-fn run_project(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let (entry_path, config) = resolve_entry_file(path)?;
+fn run_project_headless(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let (entry_path, config) = project_cmd::resolve_entry_file(path)?;
     println!("Compiling {}...", entry_path.display());
     let source = std::fs::read_to_string(&entry_path)?;
 
@@ -391,136 +535,306 @@ fn run_project(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn test_project(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let (entry_path, _config) = resolve_entry_file(path)?;
-    let source = std::fs::read_to_string(&entry_path)?;
+fn run_preview_popup(path: &Path, port: u16) -> Result<(), Box<dyn std::error::Error>> {
+    let (entry_path, config) = project_cmd::resolve_entry_file(path)?;
+    let proj_dir = if entry_path.is_file() {
+        entry_path
+            .parent()
+            .and_then(|p| if p.ends_with("src") { p.parent() } else { Some(p) })
+            .unwrap_or(Path::new("."))
+            .to_path_buf()
+    } else {
+        path.to_path_buf()
+    };
 
+    let addr = format!("127.0.0.1:{}", port);
+    let listener = match std::net::TcpListener::bind(&addr) {
+        Ok(l) => l,
+        Err(_) => {
+            let fallback_port = port + 1;
+            let fallback_addr = format!("127.0.0.1:{}", fallback_port);
+            std::net::TcpListener::bind(&fallback_addr)?
+        }
+    };
+
+    let local_addr = listener.local_addr()?;
+    let url = format!("http://{}", local_addr);
+
+    println!("============================================================");
+    println!(" Scratch Live Preview Running!");
+    println!(" Project:        {} ({})", config.name, entry_path.display());
+    println!(" Preview Window: Standalone Desktop Popup");
+    println!(" Preview URL:    {}", url);
+    println!(" Controls:       Arrow Keys / WASD, Space (Jump), Mouse Click");
+    println!(" Press Ctrl+C in terminal to close preview.");
+    println!("============================================================");
+
+    // Launch standalone popup window via Edge/Chrome app mode
+    open_popup_app(&url);
+
+    let shared_entry = std::sync::Arc::new(entry_path);
+    let shared_dir = std::sync::Arc::new(proj_dir);
+    let shared_config = std::sync::Arc::new(config);
+
+    for stream in listener.incoming() {
+        match stream {
+            Ok(mut stream) => {
+                let entry = std::sync::Arc::clone(&shared_entry);
+                let dir = std::sync::Arc::clone(&shared_dir);
+                let conf = std::sync::Arc::clone(&shared_config);
+
+                std::thread::spawn(move || {
+                    let _ = handle_preview_client(&mut stream, &entry, &dir, &conf);
+                });
+            }
+            Err(e) => {
+                eprintln!("Connection failed: {}", e);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn open_popup_app(url: &str) {
+    #[cfg(target_os = "windows")]
+    {
+        // Try Edge app mode first (native standalone window without address bar or tabs)
+        let edge_status = std::process::Command::new("cmd")
+            .args(["/C", "start", "msedge", &format!("--app={}", url), "--window-size=1020,720"])
+            .spawn();
+
+        if edge_status.is_err() {
+            // Try Chrome app mode fallback
+            let chrome_status = std::process::Command::new("cmd")
+                .args(["/C", "start", "chrome", &format!("--app={}", url), "--window-size=1020,720"])
+                .spawn();
+
+            if chrome_status.is_err() {
+                // Fallback to default browser
+                let _ = std::process::Command::new("cmd")
+                    .args(["/C", "start", url])
+                    .spawn();
+            }
+        }
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new("open").arg(url).spawn();
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let _ = std::process::Command::new("xdg-open").arg(url).spawn();
+    }
+}
+
+fn handle_preview_client(
+    stream: &mut std::net::TcpStream,
+    entry_file: &Path,
+    project_dir: &Path,
+    config: &ProjectConfig,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use std::io::{Read, Write};
+
+    let mut buffer = [0u8; 4096];
+    let r = stream.read(&mut buffer)?;
+    if r == 0 { return Ok(()); }
+
+    let req = String::from_utf8_lossy(&buffer[..r]);
+    let first_line = req.lines().next().unwrap_or("");
+    let parts: Vec<&str> = first_line.split_whitespace().collect();
+    if parts.len() < 2 { return Ok(()); }
+
+    let uri = parts[1];
+    if uri == "/" || uri == "/index.html" {
+        let html = studio::render_studio_html(&config.name);
+        let header = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            html.len()
+        );
+        stream.write_all(header.as_bytes())?;
+        stream.write_all(html.as_bytes())?;
+        stream.flush()?;
+    } else if uri == "/api/project" {
+        let code = std::fs::read_to_string(entry_file).unwrap_or_default();
+        let registry = BlockRegistry::core();
+        let mut blocks = Vec::new();
+        for b in registry.iter() {
+            blocks.push(serde_json::json!({
+                "name": b.name,
+                "category": format!("{:?}", b.category),
+                "description": b.description,
+                "snippet": b.autocomplete_metadata.snippet,
+                "doc": b.documentation,
+            }));
+        }
+        let json = serde_json::json!({
+            "name": config.name,
+            "code": code,
+            "entry": entry_file.to_string_lossy(),
+            "blocks": blocks,
+        });
+        let body = json.to_string();
+        let header = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            body.len()
+        );
+        stream.write_all(header.as_bytes())?;
+        stream.write_all(body.as_bytes())?;
+        stream.flush()?;
+    } else if uri.starts_with("/assets/") {
+        let rel = uri.trim_start_matches('/');
+        let file = project_dir.join(rel);
+        if file.is_file() {
+            let bytes = std::fs::read(&file)?;
+            let header = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                bytes.len()
+            );
+            stream.write_all(header.as_bytes())?;
+            stream.write_all(&bytes)?;
+            stream.flush()?;
+        }
+    }
+
+    Ok(())
+}
+
+fn build_project(
+    path: &Path,
+    release: bool,
+    target: &str,
+    out_dir: Option<PathBuf>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let (entry_path, config) = project_cmd::resolve_entry_file(path)?;
+    let proj_dir = if entry_path.is_file() {
+        entry_path
+            .parent()
+            .and_then(|p| if p.ends_with("src") { p.parent() } else { Some(p) })
+            .unwrap_or(Path::new("."))
+    } else {
+        path
+    };
+
+    println!("Building project '{}'...", config.name);
+    println!("Target:  {}", target);
+    println!("Mode:    {}", if release { "release" } else { "debug" });
+
+    match target.to_lowercase().as_str() {
+        "web" => {
+            let dest = out_dir.unwrap_or_else(|| proj_dir.join("dist/web"));
+            export_web(proj_dir, Some(dest))?;
+        }
+        "studio" => {
+            let dest = out_dir.unwrap_or_else(|| proj_dir.join("dist/studio"));
+            export_studio(proj_dir, Some(dest))?;
+        }
+        "bytecode" => {
+            let source = std::fs::read_to_string(&entry_path)?;
+            let ast = parse(&source)?;
+            let reg = BlockRegistry::core();
+            let ir = lower_ast_to_ir(&ast, &reg)?;
+            let mut compiler = BytecodeCompiler::new();
+            let program = compiler.compile_program(&ir);
+            let dest = out_dir.unwrap_or_else(|| proj_dir.join("dist/bytecode"));
+            std::fs::create_dir_all(&dest)?;
+            let json = serde_json::to_string_pretty(&program)?;
+            std::fs::write(dest.join("game.schbc"), json)?;
+            println!("Bytecode written to {}", dest.join("game.schbc").display());
+        }
+        "all" => {
+            build_native(proj_dir, &entry_path, &config, release, out_dir.as_ref())?;
+            export_web(proj_dir, None)?;
+            export_studio(proj_dir, None)?;
+        }
+        _ => {
+            build_native(proj_dir, &entry_path, &config, release, out_dir.as_ref())?;
+        }
+    }
+
+    Ok(())
+}
+
+fn build_native(
+    proj_dir: &Path,
+    entry_path: &Path,
+    config: &ProjectConfig,
+    release: bool,
+    out_dir: Option<&PathBuf>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let source = std::fs::read_to_string(entry_path)?;
     let ast = parse(&source).map_err(|e| format!("In {}: {}", entry_path.display(), e))?;
     let registry = BlockRegistry::core();
     let ir = lower_ast_to_ir(&ast, &registry).map_err(|e| format!("IR lowering error: {}", e))?;
     let mut compiler = BytecodeCompiler::new();
     let bytecode = compiler.compile_program(&ir);
 
-    let proj_dir = if entry_path.is_file() {
-        entry_path.parent().and_then(|p| p.parent()).unwrap_or(Path::new("."))
-    } else {
-        path
-    };
-    let scenes_dir = proj_dir.join("scenes");
+    let default_dist = proj_dir.join("dist").join(&config.name);
+    let dist_dir = out_dir.unwrap_or(&default_dist);
 
-    let mut vm_runtime = VmRuntime::new(bytecode, registry);
-    if scenes_dir.exists() {
-        let scene_mgr = SceneManager::new().with_directory(&scenes_dir);
-        vm_runtime = vm_runtime.with_scene_manager(scene_mgr);
-    }
-
-    vm_runtime.start()?;
-    for _ in 0..10 {
-        vm_runtime.tick(0.016)?;
-    }
-    println!("Executed 10 simulation frames via Bytecode VM without errors.");
-
-    Ok(())
-}
-
-fn start_lsp() -> Result<(), Box<dyn std::error::Error>> {
-    let mut server = scratch_lsp::LspServer::new();
-    let stdin = std::io::stdin();
-    let stdout = std::io::stdout();
-    let reader = std::io::BufReader::new(stdin.lock());
-    let writer = std::io::BufWriter::new(stdout.lock());
-    server.run(reader, writer)?;
-    Ok(())
-}
-
-fn build_project(path: &Path, release: bool) -> Result<(), Box<dyn std::error::Error>> {
-    let (entry_path, config) = resolve_entry_file(path)?;
-    let proj_dir = if entry_path.is_file() {
-        entry_path.parent().and_then(|p| p.parent()).unwrap_or(Path::new("."))
-    } else {
-        path
-    };
-
-    println!("Building project '{}' for distribution...", config.name);
-    let mode_str = if release { "release" } else { "debug" };
-    println!("Target Mode: {}", mode_str);
-
-    // 1. Validate source code and compile Bytecode
-    let source = std::fs::read_to_string(&entry_path)?;
-    let ast = parse(&source).map_err(|e| format!("In {}: {}", entry_path.display(), e))?;
-    let registry = BlockRegistry::core();
-    let ir = lower_ast_to_ir(&ast, &registry).map_err(|e| format!("IR lowering error: {}", e))?;
-    let mut compiler = BytecodeCompiler::new();
-    let bytecode = compiler.compile_program(&ir);
-
-    // 2. Prepare dist directory: dist/<project_name>
-    let dist_dir = proj_dir.join("dist").join(&config.name);
     if dist_dir.exists() {
-        std::fs::remove_dir_all(&dist_dir)?;
+        std::fs::remove_dir_all(dist_dir)?;
     }
-    std::fs::create_dir_all(&dist_dir)?;
+    std::fs::create_dir_all(dist_dir)?;
 
-    // 3. Save compiled bytecode package
+    // 1. Write bytecode artifact
     let bytecode_json = serde_json::to_string_pretty(&bytecode)?;
-    let bytecode_path = dist_dir.join("game.schbc");
-    std::fs::write(&bytecode_path, bytecode_json)?;
+    std::fs::write(dist_dir.join("game.schbc"), bytecode_json)?;
 
-    // 4. Save project config
+    // 2. Write project manifest
     config.save_to_file(dist_dir.join("project.schproj"))?;
 
-    // 5. Copy scenes/
+    // 3. Copy scenes & assets
     let scenes_src = proj_dir.join("scenes");
     if scenes_src.exists() {
         copy_dir_recursive(&scenes_src, &dist_dir.join("scenes"))?;
     }
-
-    // 6. Copy assets/
     let assets_src = proj_dir.join("assets");
     if assets_src.exists() {
         copy_dir_recursive(&assets_src, &dist_dir.join("assets"))?;
     }
 
-    // 7. Copy executable player if available
-    if let Ok(current_exe) = std::env::current_exe() {
-        let exe_name = current_exe.file_name().unwrap_or_default();
-        let target_exe = dist_dir.join(exe_name);
-        if let Err(e) = std::fs::copy(&current_exe, &target_exe) {
-            eprintln!("Note: Could not copy runtime executable: {}", e);
-        } else {
-            // Write convenient launcher
-            #[cfg(windows)]
-            let _ = std::fs::write(
-                dist_dir.join("run.bat"),
-                format!("@echo off\n\"%~dp0{}\" run \"%~dp0\"\n", exe_name.to_string_lossy())
-            );
-            #[cfg(not(windows))]
-            let _ = std::fs::write(
-                dist_dir.join("run.sh"),
-                format!("#!/bin/sh\n\"$(dirname \"$0\")/{}\" run \"$(dirname \"$0\")\"\n", exe_name.to_string_lossy())
-            );
-        }
+    // 4. Generate runner script
+    #[cfg(target_os = "windows")]
+    {
+        let run_bat = format!(
+            "@echo off\r\necho Starting {}...\r\nscratch run .\r\npause\r\n",
+            config.name
+        );
+        std::fs::write(dist_dir.join("run.bat"), run_bat)?;
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let run_sh = format!(
+            "#!/bin/bash\necho \"Starting {}...\"\nscratch run .\n",
+            config.name
+        );
+        std::fs::write(dist_dir.join("run.sh"), run_sh)?;
     }
 
     println!();
     println!("============================================================");
-    println!(" Build Succeeded!");
-    println!(" Deliverable directory: {}", dist_dir.display());
-    println!(" Bytecode artifact:     {}", bytecode_path.display());
-    println!(" Standalone launcher:   {}", dist_dir.join("run.bat").display());
+    println!(" Native Build Succeeded!");
+    println!(" Target Package: {}", dist_dir.display());
+    println!(" Executable Launcher: run.bat");
+    println!(" Mode: {}", if release { "Release" } else { "Debug" });
     println!("============================================================");
 
     Ok(())
 }
 
-fn export_web(path: &Path, out: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
-    let (entry_path, config) = resolve_entry_file(path)?;
-    let proj_dir = if entry_path.is_file() {
-        entry_path.parent().and_then(|p| p.parent()).unwrap_or(Path::new("."))
+fn export_web(proj_dir: &Path, out_dir: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
+    let (entry_path, config) = project_cmd::resolve_entry_file(proj_dir)?;
+    let root = if entry_path.is_file() {
+        entry_path
+            .parent()
+            .and_then(|p| if p.ends_with("src") { p.parent() } else { Some(p) })
+            .unwrap_or(Path::new("."))
     } else {
-        path
+        proj_dir
     };
 
-    let web_dist_dir = out.unwrap_or_else(|| proj_dir.join("dist").join("web"));
+    let web_dist_dir = out_dir.unwrap_or_else(|| root.join("dist/web"));
     if web_dist_dir.exists() {
         std::fs::remove_dir_all(&web_dist_dir)?;
     }
@@ -528,7 +842,6 @@ fn export_web(path: &Path, out: Option<PathBuf>) -> Result<(), Box<dyn std::erro
 
     println!("Exporting '{}' for Web (HTML5 Canvas)...", config.name);
 
-    // 1. Generate index.html
     let html_content = format!(
 r#"<!DOCTYPE html>
 <html lang="en">
@@ -541,7 +854,7 @@ r#"<!DOCTYPE html>
         body {{
             background-color: #12141a;
             color: #f0f4f8;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -576,7 +889,6 @@ r#"<!DOCTYPE html>
             width: 100%;
             height: 100%;
             display: block;
-            image-rendering: pixelated;
         }}
         #overlay {{
             position: absolute;
@@ -591,7 +903,7 @@ r#"<!DOCTYPE html>
     <header>scratch-lang // {}</header>
     <div id="game-container">
         <canvas id="scratch-canvas" width="1280" height="720"></canvas>
-        <div id="overlay">Click canvas to focus controls (Arrow keys / Space)</div>
+        <div id="overlay">Click canvas to play (Arrow keys / Space)</div>
     </div>
     <script src="game.js"></script>
 </body>
@@ -602,7 +914,6 @@ r#"<!DOCTYPE html>
 
     std::fs::write(web_dist_dir.join("index.html"), html_content)?;
 
-    // 2. Generate web player runtime harness game.js
     let js_content = r##"// scratch-lang Web Runtime Canvas Harness
 (function() {
     const canvas = document.getElementById("scratch-canvas");
@@ -627,13 +938,11 @@ r#"<!DOCTYPE html>
     window.addEventListener("keyup", (e) => { keys[e.key] = false; });
 
     function tick() {
-        // Input
         if (keys["ArrowRight"] || keys["d"]) player.x += 5;
         if (keys["ArrowLeft"] || keys["a"]) player.x -= 5;
         if (keys["ArrowUp"] || keys["w"]) player.y -= 5;
         if (keys["ArrowDown"] || keys["s"]) player.y += 5;
 
-        // Collision
         for (let c of coins) {
             if (!c.collected && Math.hypot(player.x - c.x, player.y - c.y) < 32) {
                 c.collected = true;
@@ -641,11 +950,9 @@ r#"<!DOCTYPE html>
             }
         }
 
-        // Render
         ctx.fillStyle = "#1e222d";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Grid lines
         ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
         for (let x = 0; x < canvas.width; x += 64) {
             ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
@@ -654,7 +961,6 @@ r#"<!DOCTYPE html>
             ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
         }
 
-        // Coins
         for (let c of coins) {
             if (!c.collected) {
                 ctx.fillStyle = "#f1c40f";
@@ -664,11 +970,9 @@ r#"<!DOCTYPE html>
             }
         }
 
-        // Player
         ctx.fillStyle = "#3498db";
         ctx.fillRect(player.x - 16, player.y - 16, player.width, player.height);
 
-        // Score
         ctx.fillStyle = "#ecf0f1";
         ctx.font = "bold 24px monospace";
         ctx.fillText(`Score: ${score}`, 32, 48);
@@ -682,12 +986,11 @@ r#"<!DOCTYPE html>
 
     std::fs::write(web_dist_dir.join("game.js"), js_content)?;
 
-    // 3. Copy scenes & assets
-    let scenes_src = proj_dir.join("scenes");
+    let scenes_src = root.join("scenes");
     if scenes_src.exists() {
         copy_dir_recursive(&scenes_src, &web_dist_dir.join("scenes"))?;
     }
-    let assets_src = proj_dir.join("assets");
+    let assets_src = root.join("assets");
     if assets_src.exists() {
         copy_dir_recursive(&assets_src, &web_dist_dir.join("assets"))?;
     }
@@ -705,15 +1008,18 @@ r#"<!DOCTYPE html>
     Ok(())
 }
 
-fn export_studio(path: &Path, out_dir: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
-    let (entry_path, config) = resolve_entry_file(path)?;
-    let proj_dir = if entry_path.is_file() {
-        entry_path.parent().and_then(|p| if p.ends_with("src") { p.parent() } else { Some(p) }).unwrap_or(Path::new("."))
+fn export_studio(proj_dir: &Path, out_dir: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
+    let (entry_path, config) = project_cmd::resolve_entry_file(proj_dir)?;
+    let root = if entry_path.is_file() {
+        entry_path
+            .parent()
+            .and_then(|p| if p.ends_with("src") { p.parent() } else { Some(p) })
+            .unwrap_or(Path::new("."))
     } else {
-        path
+        proj_dir
     };
 
-    let studio_dist_dir = out_dir.unwrap_or_else(|| proj_dir.join("dist/studio"));
+    let studio_dist_dir = out_dir.unwrap_or_else(|| root.join("dist/studio"));
     if studio_dist_dir.exists() {
         std::fs::remove_dir_all(&studio_dist_dir)?;
     }
@@ -723,12 +1029,11 @@ fn export_studio(path: &Path, out_dir: Option<PathBuf>) -> Result<(), Box<dyn st
     let html = studio::render_studio_html(&config.name);
     std::fs::write(studio_dist_dir.join("index.html"), html)?;
 
-    // Copy scenes & assets if they exist
-    let scenes_src = proj_dir.join("scenes");
+    let scenes_src = root.join("scenes");
     if scenes_src.exists() {
         copy_dir_recursive(&scenes_src, &studio_dist_dir.join("scenes"))?;
     }
-    let assets_src = proj_dir.join("assets");
+    let assets_src = root.join("assets");
     if assets_src.exists() {
         copy_dir_recursive(&assets_src, &studio_dist_dir.join("assets"))?;
     }
@@ -738,7 +1043,7 @@ fn export_studio(path: &Path, out_dir: Option<PathBuf>) -> Result<(), Box<dyn st
     println!(" Scratch Studio Export Succeeded!");
     println!(" Studio Directory: {}", studio_dist_dir.display());
     println!(" Preview locally with:");
-    println!("   scratch studio {}", proj_dir.display());
+    println!("   scratch studio {}", root.display());
     println!("   or");
     println!("   python -m http.server -d {}", studio_dist_dir.display());
     println!("============================================================");
@@ -761,3 +1066,12 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), Box<dyn std::error::
     Ok(())
 }
 
+fn start_lsp() -> Result<(), Box<dyn std::error::Error>> {
+    let mut server = scratch_lsp::LspServer::new();
+    let stdin = std::io::stdin();
+    let stdout = std::io::stdout();
+    let reader = std::io::BufReader::new(stdin.lock());
+    let writer = std::io::BufWriter::new(stdout.lock());
+    server.run(reader, writer)?;
+    Ok(())
+}
