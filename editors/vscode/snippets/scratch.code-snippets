@@ -1,0 +1,722 @@
+{
+  "when start": {
+    "prefix": "when start",
+    "body": [
+      "when start:",
+      "    ${0:teleport(\"Player\", 0, 0)}"
+    ],
+    "description": "Lifecycle event triggered when green flag is clicked (event_whenflagclicked)"
+  },
+  "when update": {
+    "prefix": "when update",
+    "body": [
+      "when update:",
+      "    ${0:pass}"
+    ],
+    "description": "60 FPS update loop executed every frame (control_forever)"
+  },
+  "when action.press": {
+    "prefix": "when action.press",
+    "body": [
+      "when action.press(\"${1:space}\"):",
+      "    ${0:pass}"
+    ],
+    "description": "Triggered when a key is pressed (event_whenkeypressed)"
+  },
+  "when action.down": {
+    "prefix": "when action.down",
+    "body": [
+      "when action.down(\"${1:right}\"):",
+      "    ${0:change_x(\"Player\", 5)}"
+    ],
+    "description": "Triggered continuously while a key is held down"
+  },
+  "when action.up": {
+    "prefix": "when action.up",
+    "body": [
+      "when action.up(\"${1:jump}\"):",
+      "    ${0:pass}"
+    ],
+    "description": "Triggered when a key is released"
+  },
+  "when click": {
+    "prefix": "when click",
+    "body": [
+      "when click(\"${1:Player}\"):",
+      "    ${0:say(\"${1:Player}\", \"Clicked!\")}"
+    ],
+    "description": "Triggered when a sprite is clicked (event_whenthisspriteclicked)"
+  },
+  "when touches": {
+    "prefix": "when touches",
+    "body": [
+      "when ${1:Player} touches ${2:Enemy}:",
+      "    ${0:say(\"${1:Player}\", \"Ouch!\")}"
+    ],
+    "description": "Triggered when two objects collide"
+  },
+  "when message": {
+    "prefix": "when message",
+    "body": [
+      "when message(\"${1:game_over}\"):",
+      "    ${0:stop_all()}"
+    ],
+    "description": "Triggered when a broadcast message is received (event_whenbroadcastreceived)"
+  },
+  "when scene.switched": {
+    "prefix": "when scene.switched",
+    "body": [
+      "when scene.switched(\"${1:backdrop1}\"):",
+      "    ${0:pass}"
+    ],
+    "description": "Triggered when backdrop switches (event_whenbackdropswitchesto)"
+  },
+  "when loudness": {
+    "prefix": "when loudness",
+    "body": [
+      "when loudness > ${1:50}:",
+      "    ${0:say(\"Cat\", \"Too loud!\")}"
+    ],
+    "description": "Triggered when loudness exceeds threshold (event_whengreaterthan)"
+  },
+  "every seconds": {
+    "prefix": "every seconds",
+    "body": [
+      "every ${1:1} seconds:",
+      "    ${0:pass}"
+    ],
+    "description": "Repeats periodically at fixed time intervals"
+  },
+  "after seconds": {
+    "prefix": "after seconds",
+    "body": [
+      "after ${1:2} seconds:",
+      "    ${0:pass}"
+    ],
+    "description": "Triggers once after a specified duration"
+  },
+  "if condition": {
+    "prefix": "if",
+    "body": [
+      "if ${1:condition}:",
+      "    ${0:pass}"
+    ],
+    "description": "Conditional execution block (control_if)"
+  },
+  "if else": {
+    "prefix": "ifelse",
+    "body": [
+      "if ${1:condition}:",
+      "    ${2:pass}",
+      "else:",
+      "    ${0:pass}"
+    ],
+    "description": "Dual-branch conditional execution (control_if_else)"
+  },
+  "repeat loop": {
+    "prefix": "repeat",
+    "body": [
+      "repeat ${1:10}:",
+      "    ${0:pass}"
+    ],
+    "description": "Bounded repetition loop (control_repeat)"
+  },
+  "while not": {
+    "prefix": "whilenot",
+    "body": [
+      "while not ${1:condition}:",
+      "    ${0:pass}"
+    ],
+    "description": "Guarded loop repeating until condition is true (control_repeat_until)"
+  },
+  "function definition": {
+    "prefix": "fn",
+    "body": [
+      "fn ${1:name}(${2:params}):",
+      "    ${0:pass}"
+    ],
+    "description": "Custom procedure definition (procedures_definition)"
+  },
+
+  "move": {
+    "prefix": "move",
+    "body": ["move(\"${1:Player}\", ${2:10})"],
+    "description": "Move steps in heading direction (motion_movesteps)"
+  },
+  "turn_right": {
+    "prefix": "turn_right",
+    "body": ["turn_right(\"${1:Player}\", ${2:15})"],
+    "description": "Rotate clockwise by degrees (motion_turnright)"
+  },
+  "turn_left": {
+    "prefix": "turn_left",
+    "body": ["turn_left(\"${1:Player}\", ${2:15})"],
+    "description": "Rotate counter-clockwise by degrees (motion_turnleft)"
+  },
+  "go_to": {
+    "prefix": "go_to",
+    "body": ["go_to(\"${1:Player}\", \"${2|mouse,random,Sprite1|}\")"],
+    "description": "Go to mouse, random position, or sprite (motion_goto)"
+  },
+  "teleport": {
+    "prefix": "teleport",
+    "body": ["teleport(\"${1:Player}\", ${2:0}, ${3:0})"],
+    "description": "Instant Cartesian coordinate assignment (motion_gotoxy)"
+  },
+  "glide": {
+    "prefix": "glide",
+    "body": ["glide(\"${1:Player}\", ${2:1.0}, ${3:0}, ${4:0})"],
+    "description": "Glide smoothly to x, y over duration (motion_glidesecstoxy)"
+  },
+  "glide_to": {
+    "prefix": "glide_to",
+    "body": ["glide_to(\"${1:Player}\", ${2:1.0}, \"${3:mouse}\")"],
+    "description": "Glide to target over duration (motion_glideto)"
+  },
+  "point_in_direction": {
+    "prefix": "point_in_direction",
+    "body": ["point_in_direction(\"${1:Player}\", ${2:90})"],
+    "description": "Set heading direction: 0 (up), 90 (right), 180 (down), -90 (left) (motion_pointindirection)"
+  },
+  "point_towards": {
+    "prefix": "point_towards",
+    "body": ["point_towards(\"${1:Player}\", \"${2:mouse}\")"],
+    "description": "Rotate to face target or mouse (motion_pointtowards)"
+  },
+  "change_x": {
+    "prefix": "change_x",
+    "body": ["change_x(\"${1:Player}\", ${2:10})"],
+    "description": "Increment horizontal position x (motion_changexby)"
+  },
+  "set_x": {
+    "prefix": "set_x",
+    "body": ["set_x(\"${1:Player}\", ${2:0})"],
+    "description": "Set horizontal position x (motion_setx)"
+  },
+  "change_y": {
+    "prefix": "change_y",
+    "body": ["change_y(\"${1:Player}\", ${2:10})"],
+    "description": "Increment vertical position y (motion_changeyby)"
+  },
+  "set_y": {
+    "prefix": "set_y",
+    "body": ["set_y(\"${1:Player}\", ${2:0})"],
+    "description": "Set vertical position y (motion_sety)"
+  },
+  "bounce_on_edge": {
+    "prefix": "bounce_on_edge",
+    "body": ["bounce_on_edge(\"${1:Player}\")"],
+    "description": "Bounce off stage boundaries (motion_ifonedgebounce)"
+  },
+  "set_rotation_style": {
+    "prefix": "set_rotation_style",
+    "body": ["set_rotation_style(\"${1:Player}\", \"${2|all-around,left-right,don't rotate|}\")"],
+    "description": "Configure rotation style (motion_setrotationstyle)"
+  },
+  "x_position": {
+    "prefix": "x_position",
+    "body": ["x_position(\"${1:Player}\")"],
+    "description": "Current x position of sprite (motion_xposition)"
+  },
+  "y_position": {
+    "prefix": "y_position",
+    "body": ["y_position(\"${1:Player}\")"],
+    "description": "Current y position of sprite (motion_yposition)"
+  },
+  "get_direction": {
+    "prefix": "get_direction",
+    "body": ["get_direction(\"${1:Player}\")"],
+    "description": "Current heading angle of sprite (motion_direction)"
+  },
+
+  "say": {
+    "prefix": "say",
+    "body": ["say(\"${1:Player}\", \"${2:Hello!}\")"],
+    "description": "Show speech bubble (looks_say)"
+  },
+  "say_for": {
+    "prefix": "say_for",
+    "body": ["say_for(\"${1:Player}\", \"${2:Hello!}\", ${3:2})"],
+    "description": "Show speech bubble for seconds (looks_sayforsecs)"
+  },
+  "think": {
+    "prefix": "think",
+    "body": ["think(\"${1:Player}\", \"${2:Hmm...}\")"],
+    "description": "Show thought bubble (looks_think)"
+  },
+  "think_for": {
+    "prefix": "think_for",
+    "body": ["think_for(\"${1:Player}\", \"${2:Hmm...}\", ${3:2})"],
+    "description": "Show thought bubble for seconds (looks_thinkforsecs)"
+  },
+  "switch_costume": {
+    "prefix": "switch_costume",
+    "body": ["switch_costume(\"${1:Player}\", \"${2:costume1}\")"],
+    "description": "Switch active costume (looks_switchcostumeto)"
+  },
+  "next_costume": {
+    "prefix": "next_costume",
+    "body": ["next_costume(\"${1:Player}\")"],
+    "description": "Advance to next costume (looks_nextcostume)"
+  },
+  "switch_backdrop": {
+    "prefix": "switch_backdrop",
+    "body": ["switch_backdrop(\"${1:backdrop1}\")"],
+    "description": "Switch stage backdrop (looks_switchbackdropto)"
+  },
+  "switch_backdrop_and_wait": {
+    "prefix": "switch_backdrop_and_wait",
+    "body": ["switch_backdrop_and_wait(\"${1:backdrop1}\")"],
+    "description": "Switch backdrop and wait for handlers (looks_switchbackdroptoandwait)"
+  },
+  "next_backdrop": {
+    "prefix": "next_backdrop",
+    "body": ["next_backdrop()"],
+    "description": "Advance to next backdrop (looks_nextbackdrop)"
+  },
+  "change_size": {
+    "prefix": "change_size",
+    "body": ["change_size(\"${1:Player}\", ${2:10})"],
+    "description": "Change sprite size by delta percent (looks_changesizeby)"
+  },
+  "set_size": {
+    "prefix": "set_size",
+    "body": ["set_size(\"${1:Player}\", ${2:100})"],
+    "description": "Set absolute sprite size percentage (looks_setsizeto)"
+  },
+  "change_effect": {
+    "prefix": "change_effect",
+    "body": ["change_effect(\"${1:Player}\", \"${2|color,ghost,brightness,whirl,pixelate|}\", ${3:25})"],
+    "description": "Change shader effect by delta (looks_changeeffectby)"
+  },
+  "set_effect": {
+    "prefix": "set_effect",
+    "body": ["set_effect(\"${1:Player}\", \"${2|color,ghost,brightness,whirl,pixelate|}\", ${3:0})"],
+    "description": "Set shader effect value (looks_seteffectto)"
+  },
+  "clear_effects": {
+    "prefix": "clear_effects",
+    "body": ["clear_effects(\"${1:Player}\")"],
+    "description": "Reset all visual shader effects (looks_cleargraphiceffects)"
+  },
+  "show": {
+    "prefix": "show",
+    "body": ["show(\"${1:Player}\")"],
+    "description": "Make sprite visible on stage (looks_show)"
+  },
+  "hide": {
+    "prefix": "hide",
+    "body": ["hide(\"${1:Player}\")"],
+    "description": "Hide sprite from stage (looks_hide)"
+  },
+  "go_to_front": {
+    "prefix": "go_to_front",
+    "body": ["go_to_front(\"${1:Player}\")"],
+    "description": "Move sprite to front z-layer (looks_gotofrontback)"
+  },
+  "go_to_back": {
+    "prefix": "go_to_back",
+    "body": ["go_to_back(\"${1:Player}\")"],
+    "description": "Move sprite to back z-layer (looks_gotofrontback)"
+  },
+  "go_forward_layers": {
+    "prefix": "go_forward_layers",
+    "body": ["go_forward_layers(\"${1:Player}\", ${2:1})"],
+    "description": "Shift sprite forward layers (looks_goforwardbackwardlayers)"
+  },
+  "go_back_layers": {
+    "prefix": "go_back_layers",
+    "body": ["go_back_layers(\"${1:Player}\", ${2:1})"],
+    "description": "Shift sprite backward layers (looks_goforwardbackwardlayers)"
+  },
+  "get_costume_number": {
+    "prefix": "get_costume_number",
+    "body": ["get_costume_number(\"${1:Player}\")"],
+    "description": "Get active costume 1-based index (looks_costumenumbername)"
+  },
+  "get_costume_name": {
+    "prefix": "get_costume_name",
+    "body": ["get_costume_name(\"${1:Player}\")"],
+    "description": "Get active costume name (looks_costumenumbername)"
+  },
+  "get_backdrop_number": {
+    "prefix": "get_backdrop_number",
+    "body": ["get_backdrop_number()"],
+    "description": "Get active backdrop 1-based index (looks_backdropnumbername)"
+  },
+  "get_backdrop_name": {
+    "prefix": "get_backdrop_name",
+    "body": ["get_backdrop_name()"],
+    "description": "Get active backdrop name (looks_backdropnumbername)"
+  },
+  "get_size": {
+    "prefix": "get_size",
+    "body": ["get_size(\"${1:Player}\")"],
+    "description": "Get sprite size percent (looks_size)"
+  },
+
+  "sound.play": {
+    "prefix": "sound.play",
+    "body": ["sound.play(\"${1:sound_name}\")"],
+    "description": "Play sound asynchronously (sound_play)"
+  },
+  "sound.play_until_done": {
+    "prefix": "sound.play_until_done",
+    "body": ["sound.play_until_done(\"${1:sound_name}\")"],
+    "description": "Play sound and block until finished (sound_playuntildone)"
+  },
+  "sound.stop_all": {
+    "prefix": "sound.stop_all",
+    "body": ["sound.stop_all()"],
+    "description": "Halt all audio channels (sound_stopallsounds)"
+  },
+  "sound.change_effect": {
+    "prefix": "sound.change_effect",
+    "body": ["sound.change_effect(\"${1|pitch,pan|}\", ${2:10})"],
+    "description": "Change audio DSP effect (sound_changeeffectby)"
+  },
+  "sound.set_effect": {
+    "prefix": "sound.set_effect",
+    "body": ["sound.set_effect(\"${1|pitch,pan|}\", ${2:0})"],
+    "description": "Set audio DSP effect value (sound_seteffectto)"
+  },
+  "sound.clear_effects": {
+    "prefix": "sound.clear_effects",
+    "body": ["sound.clear_effects()"],
+    "description": "Reset audio DSP effects (sound_cleareffects)"
+  },
+  "sound.change_volume": {
+    "prefix": "sound.change_volume",
+    "body": ["sound.change_volume(${1:10})"],
+    "description": "Change volume by delta (sound_changevolumeby)"
+  },
+  "sound.set_volume": {
+    "prefix": "sound.set_volume",
+    "body": ["sound.set_volume(${1:100})"],
+    "description": "Set master volume percentage (sound_setvolumeto)"
+  },
+  "sound.get_volume": {
+    "prefix": "sound.get_volume",
+    "body": ["sound.get_volume()"],
+    "description": "Get master volume percentage (sound_volume)"
+  },
+
+  "touching": {
+    "prefix": "touching",
+    "body": ["touching(\"${1:Player}\", \"${2|mouse,edge,Sprite1|}\")"],
+    "description": "Collision query with sprite, mouse, or edge (sensing_touchingobject)"
+  },
+  "touching_color": {
+    "prefix": "touching_color",
+    "body": ["touching_color(\"${1:Player}\", \"${2:#ff0000}\")"],
+    "description": "Collision query with hex color (sensing_touchingcolor)"
+  },
+  "color_touching_color": {
+    "prefix": "color_touching_color",
+    "body": ["color_touching_color(\"${1:#000000}\", \"${2:#ffffff}\")"],
+    "description": "Check if sprite color touches another color (sensing_coloristouchingcolor)"
+  },
+  "distance_to": {
+    "prefix": "distance_to",
+    "body": ["distance_to(\"${1:Player}\", \"${2:mouse}\")"],
+    "description": "Euclidean distance to target (sensing_distanceto)"
+  },
+  "ask": {
+    "prefix": "ask",
+    "body": ["ask(\"${1:What's your name?}\")"],
+    "description": "Prompt input modal on stage (sensing_askandwait)"
+  },
+  "get_answer": {
+    "prefix": "get_answer",
+    "body": ["get_answer()"],
+    "description": "Answer submitted in last prompt (sensing_answer)"
+  },
+  "key_pressed": {
+    "prefix": "key_pressed",
+    "body": ["key_pressed(\"${1:space}\")"],
+    "description": "Poll continuous keyboard key state (sensing_keypressed)"
+  },
+  "mouse_down": {
+    "prefix": "mouse_down",
+    "body": ["mouse_down()"],
+    "description": "Poll left mouse button state (sensing_mousedown)"
+  },
+  "mouse_x": {
+    "prefix": "mouse_x",
+    "body": ["mouse_x()"],
+    "description": "Current mouse x coordinate (sensing_mousex)"
+  },
+  "mouse_y": {
+    "prefix": "mouse_y",
+    "body": ["mouse_y()"],
+    "description": "Current mouse y coordinate (sensing_mousey)"
+  },
+  "set_drag_mode": {
+    "prefix": "set_drag_mode",
+    "body": ["set_drag_mode(\"${1:Player}\", \"${2|draggable,not draggable|}\")"],
+    "description": "Set whether sprite is draggable (sensing_setdragmode)"
+  },
+  "get_loudness": {
+    "prefix": "get_loudness",
+    "body": ["get_loudness()"],
+    "description": "Microphone audio level (0-100) (sensing_loudness)"
+  },
+  "get_timer": {
+    "prefix": "get_timer",
+    "body": ["get_timer()"],
+    "description": "Elapsed seconds since start or reset (sensing_timer)"
+  },
+  "reset_timer": {
+    "prefix": "reset_timer",
+    "body": ["reset_timer()"],
+    "description": "Reset timer baseline to 0.0 (sensing_resettimer)"
+  },
+  "property_of": {
+    "prefix": "property_of",
+    "body": ["property_of(\"${1:Sprite1}\", \"${2|x position,y position,direction,costume number,costume name,size,volume|}\")"],
+    "description": "Introspect property or variable of entity (sensing_of)"
+  },
+  "current": {
+    "prefix": "current",
+    "body": ["current(\"${1|year,month,date,dayofweek,hour,minute,second|}\")"],
+    "description": "System clock date and time component (sensing_current)"
+  },
+  "days_since_2000": {
+    "prefix": "days_since_2000",
+    "body": ["days_since_2000()"],
+    "description": "Fractional days elapsed since Jan 1, 2000 (sensing_dayssince2000)"
+  },
+  "get_username": {
+    "prefix": "get_username",
+    "body": ["get_username()"],
+    "description": "Active user operating system username (sensing_username)"
+  },
+
+  "random": {
+    "prefix": "random",
+    "body": ["random(${1:1}, ${2:10})"],
+    "description": "Pick uniform random number in range (operator_random)"
+  },
+  "text.join": {
+    "prefix": "text.join",
+    "body": ["text.join(\"${1:apple}\", \"${2:banana}\")"],
+    "description": "Concatenate two strings (operator_join)"
+  },
+  "text.letter_at": {
+    "prefix": "text.letter_at",
+    "body": ["text.letter_at(\"${1:apple}\", ${2:1})"],
+    "description": "Get 1-based character at index (operator_letter_of)"
+  },
+  "text.length": {
+    "prefix": "text.length",
+    "body": ["text.length(\"${1:apple}\")"],
+    "description": "Length of string (operator_length)"
+  },
+  "text.contains": {
+    "prefix": "text.contains",
+    "body": ["text.contains(\"${1:apple}\", \"${2:a}\")"],
+    "description": "Case-insensitive substring search (operator_contains)"
+  },
+  "math.mod": {
+    "prefix": "math.mod",
+    "body": ["math.mod(${1:10}, ${2:3})"],
+    "description": "Floored mathematical modulo (operator_mod)"
+  },
+  "math.round": {
+    "prefix": "math.round",
+    "body": ["math.round(${1:3.7})"],
+    "description": "Half-away-from-zero rounding (operator_round)"
+  },
+  "math.operation": {
+    "prefix": "math.op",
+    "body": ["math.${1|abs,sqrt,sin,cos,tan,asin,acos,atan,ln,log,exp,pow10|}(${2:0})"],
+    "description": "Mathematical function operation (operator_mathop)"
+  },
+
+  "list.to_string": {
+    "prefix": "list.to_string",
+    "body": ["list.to_string(\"${1:list_name}\")"],
+    "description": "Format all list items as text (data_listcontents)"
+  },
+  "list.add": {
+    "prefix": "list.add",
+    "body": ["list.add(\"${1:list_name}\", ${2:item})"],
+    "description": "Append element to tail of list (data_addtolist)"
+  },
+  "list.delete": {
+    "prefix": "list.delete",
+    "body": ["list.delete(\"${1:list_name}\", ${2:1})"],
+    "description": "Remove element at 1-based index or 'last' (data_deleteoflist)"
+  },
+  "list.clear": {
+    "prefix": "list.clear",
+    "body": ["list.clear(\"${1:list_name}\")"],
+    "description": "Remove all elements from list (data_deletealloflist)"
+  },
+  "list.insert": {
+    "prefix": "list.insert",
+    "body": ["list.insert(\"${1:list_name}\", ${2:1}, ${3:item})"],
+    "description": "Insert element at 1-based index (data_insertatlist)"
+  },
+  "list.replace": {
+    "prefix": "list.replace",
+    "body": ["list.replace(\"${1:list_name}\", ${2:1}, ${3:item})"],
+    "description": "Replace element at 1-based index (data_replaceitemoflist)"
+  },
+  "list.item": {
+    "prefix": "list.item",
+    "body": ["list.item(\"${1:list_name}\", ${2:1})"],
+    "description": "Get item at 1-based index, 'last', or 'random' (data_itemoflist)"
+  },
+  "list.index_of": {
+    "prefix": "list.index_of",
+    "body": ["list.index_of(\"${1:list_name}\", ${2:item})"],
+    "description": "Find 1-based index of first occurrence, 0 if missing (data_itemnumoflist)"
+  },
+  "list.length": {
+    "prefix": "list.length",
+    "body": ["list.length(\"${1:list_name}\")"],
+    "description": "Get total element count of list (data_lengthoflist)"
+  },
+  "list.contains": {
+    "prefix": "list.contains",
+    "body": ["list.contains(\"${1:list_name}\", ${2:item})"],
+    "description": "Check list membership equality (data_listcontainsitem)"
+  },
+  "list.show": {
+    "prefix": "list.show",
+    "body": ["list.show(\"${1:list_name}\")"],
+    "description": "Display list monitor HUD on stage (data_showlist)"
+  },
+  "list.hide": {
+    "prefix": "list.hide",
+    "body": ["list.hide(\"${1:list_name}\")"],
+    "description": "Hide list monitor HUD from stage (data_hidelist)"
+  },
+
+  "pen.clear": {
+    "prefix": "pen.clear",
+    "body": ["pen.clear()"],
+    "description": "Erase all drawing strokes and stamps from stage (pen_clear)"
+  },
+  "pen.stamp": {
+    "prefix": "pen.stamp",
+    "body": ["pen.stamp(\"${1:Player}\")"],
+    "description": "Stamp sprite frame onto stage canvas (pen_stamp)"
+  },
+  "pen.down": {
+    "prefix": "pen.down",
+    "body": ["pen.down(\"${1:Player}\")"],
+    "description": "Lower pen to draw motion trails (pen_penDown)"
+  },
+  "pen.up": {
+    "prefix": "pen.up",
+    "body": ["pen.up(\"${1:Player}\")"],
+    "description": "Lift pen to stop drawing trails (pen_penUp)"
+  },
+  "pen.set_color": {
+    "prefix": "pen.set_color",
+    "body": ["pen.set_color(\"${1:#ff0000}\")"],
+    "description": "Set stroke hex color (pen_setPenColorToColor)"
+  },
+  "pen.change_param": {
+    "prefix": "pen.change_param",
+    "body": ["pen.change_param(\"${1|color,saturation,brightness,transparency|}\", ${2:10})"],
+    "description": "Change pen color parameter (pen_changePenColorParamBy)"
+  },
+  "pen.set_param": {
+    "prefix": "pen.set_param",
+    "body": ["pen.set_param(\"${1|color,saturation,brightness,transparency|}\", ${2:50})"],
+    "description": "Set pen color parameter (pen_setPenColorParamTo)"
+  },
+  "pen.change_size": {
+    "prefix": "pen.change_size",
+    "body": ["pen.change_size(${1:1})"],
+    "description": "Change pen stroke size by delta (pen_changePenSizeBy)"
+  },
+  "pen.set_size": {
+    "prefix": "pen.set_size",
+    "body": ["pen.set_size(${1:2})"],
+    "description": "Set absolute pen stroke size (pen_setPenSizeTo)"
+  },
+
+  "music.play_drum": {
+    "prefix": "music.play_drum",
+    "body": ["music.play_drum(${1:1}, ${2:0.25})"],
+    "description": "Play percussion drum for beats (music_playDrumForBeats)"
+  },
+  "music.rest": {
+    "prefix": "music.rest",
+    "body": ["music.rest(${1:0.25})"],
+    "description": "Rest channel for beat duration (music_restForBeats)"
+  },
+  "music.play_note": {
+    "prefix": "music.play_note",
+    "body": ["music.play_note(${1:60}, ${2:0.5})"],
+    "description": "Play MIDI synthesizer note frequency (music_playNoteForBeats)"
+  },
+  "music.set_instrument": {
+    "prefix": "music.set_instrument",
+    "body": ["music.set_instrument(${1:1})"],
+    "description": "Select MIDI instrument preset (music_setInstrument)"
+  },
+  "music.set_tempo": {
+    "prefix": "music.set_tempo",
+    "body": ["music.set_tempo(${1:60})"],
+    "description": "Set tempo in beats per minute (music_setTempo)"
+  },
+  "music.change_tempo": {
+    "prefix": "music.change_tempo",
+    "body": ["music.change_tempo(${1:20})"],
+    "description": "Adjust tempo BPM by delta (music_changeTempo)"
+  },
+  "music.get_tempo": {
+    "prefix": "music.get_tempo",
+    "body": ["music.get_tempo()"],
+    "description": "Get current tempo BPM (music_getTempo)"
+  },
+
+  "tts.speak": {
+    "prefix": "tts.speak",
+    "body": ["tts.speak(\"${1:Hello world!}\")"],
+    "description": "Speak text aloud with speech synthesis (text2speech_speakAndWait)"
+  },
+  "tts.set_voice": {
+    "prefix": "tts.set_voice",
+    "body": ["tts.set_voice(\"${1|alto,tenor,squeak,giant,kitten|}\")"],
+    "description": "Set speech synthesizer voice timbre (text2speech_setVoice)"
+  },
+  "tts.set_language": {
+    "prefix": "tts.set_language",
+    "body": ["tts.set_language(\"${1|English,Spanish,French,German,Japanese|}\")"],
+    "description": "Set speech synthesizer language (text2speech_setLanguage)"
+  },
+
+  "translate.text": {
+    "prefix": "translate.text",
+    "body": ["translate.text(\"${1:Hello}\", \"${2:Spanish}\")"],
+    "description": "Translate string to target language ISO code (translate_getTranslate)"
+  },
+  "translate.get_language": {
+    "prefix": "translate.get_language",
+    "body": ["translate.get_language()"],
+    "description": "Get viewer system operating system language (translate_getViewerLanguage)"
+  },
+
+  "makey.key": {
+    "prefix": "when makey.key",
+    "body": [
+      "when makey.key(\"${1:space}\"):",
+      "    ${0:pass}"
+    ],
+    "description": "Triggered when Makey Makey key contact is closed (makeymakey_whenMakeyKeyPressed)"
+  },
+  "makey.code": {
+    "prefix": "when makey.code",
+    "body": [
+      "when makey.code(\"${1:up up down down}\"):",
+      "    ${0:pass}"
+    ],
+    "description": "Triggered when input sequence combo is matched (makeymakey_whenCodePressed)"
+  }
+}

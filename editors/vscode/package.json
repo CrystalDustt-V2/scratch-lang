@@ -1,14 +1,21 @@
 {
   "name": "scratch-lang",
   "displayName": "scratch-lang",
-  "description": "Language support, syntax highlighting, and LSP integration for scratch-lang (.sch)",
+  "description": "Complete language support, real-time linting, formatting, IntelliSense completions, and LSP for scratch-lang (.sch)",
   "version": "0.1.0",
   "publisher": "scratch-lang",
   "engines": {
     "vscode": "^1.75.0"
   },
   "categories": [
-    "Programming Languages"
+    "Programming Languages",
+    "Linters",
+    "Formatters",
+    "Snippets"
+  ],
+  "main": "./src/extension.js",
+  "activationEvents": [
+    "onLanguage:scratch"
   ],
   "contributes": {
     "languages": [
@@ -16,7 +23,8 @@
         "id": "scratch",
         "aliases": [
           "scratch-lang",
-          "scratch"
+          "scratch",
+          "Scratch"
         ],
         "extensions": [
           ".sch"
@@ -31,6 +39,53 @@
         "path": "./syntaxes/scratch.tmLanguage.json"
       }
     ],
+    "snippets": [
+      {
+        "language": "scratch",
+        "path": "./snippets/scratch.code-snippets"
+      }
+    ],
+    "commands": [
+      {
+        "command": "scratch.run",
+        "title": "Scratch: Run Project (GUI Preview)",
+        "icon": "$(play)"
+      },
+      {
+        "command": "scratch.check",
+        "title": "Scratch: Check & Lint Project",
+        "icon": "$(check)"
+      },
+      {
+        "command": "scratch.studio",
+        "title": "Scratch: Open Visual Project Studio",
+        "icon": "$(layout)"
+      },
+      {
+        "command": "scratch.restartServer",
+        "title": "Scratch: Restart Language Server",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "scratch.run",
+          "when": "resourceExtname == .sch",
+          "group": "navigation"
+        },
+        {
+          "command": "scratch.check",
+          "when": "resourceExtname == .sch",
+          "group": "navigation"
+        },
+        {
+          "command": "scratch.studio",
+          "when": "resourceExtname == .sch",
+          "group": "navigation"
+        }
+      ]
+    },
     "configuration": {
       "type": "object",
       "title": "scratch-lang Configuration",
@@ -38,7 +93,22 @@
         "scratch.lsp.path": {
           "type": "string",
           "default": "scratch",
-          "description": "Path to the scratch CLI executable (which supports 'scratch lsp')"
+          "description": "Path or command name for the scratch CLI executable"
+        },
+        "scratch.lsp.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Language Server Protocol features (linting, autocompletion, hover, formatting)"
+        },
+        "scratch.format.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable automatic document formatting with scratch-lang standard rules"
+        },
+        "scratch.lint.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable real-time diagnostic reporting (syntax errors, missing assets, typo suggestions)"
         }
       }
     }
