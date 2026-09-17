@@ -138,6 +138,456 @@ impl BlockRegistry {
                 .with_example("scene.restart()")
         );
 
+        // === MOTION BLOCKS (from Scratch PDF p. 1-2) ===
+
+        // 15. change_x(target, dx)
+        registry.register(
+            BlockDefinition::new("change_x", BlockCategory::Movement, "Change object X coordinate by delta", BlockType::Void, "MovementSystem::changeX")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("dx", BlockType::Number, false, None, "Horizontal delta in pixels")
+                .with_doc("Increases or decreases the target entity's X position.")
+                .with_example("change_x(Player, 10)")
+        );
+
+        // 16. set_x(target, x)
+        registry.register(
+            BlockDefinition::new("set_x", BlockCategory::Movement, "Set object X coordinate directly", BlockType::Void, "MovementSystem::setX")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("x", BlockType::Number, false, None, "New X coordinate")
+                .with_doc("Directly assigns the target entity's horizontal position.")
+                .with_example("set_x(Player, 0)")
+        );
+
+        // 17. change_y(target, dy)
+        registry.register(
+            BlockDefinition::new("change_y", BlockCategory::Movement, "Change object Y coordinate by delta", BlockType::Void, "MovementSystem::changeY")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("dy", BlockType::Number, false, None, "Vertical delta in pixels")
+                .with_doc("Increases or decreases the target entity's Y position.")
+                .with_example("change_y(Player, 10)")
+        );
+
+        // 18. set_y(target, y)
+        registry.register(
+            BlockDefinition::new("set_y", BlockCategory::Movement, "Set object Y coordinate directly", BlockType::Void, "MovementSystem::setY")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("y", BlockType::Number, false, None, "New Y coordinate")
+                .with_doc("Directly assigns the target entity's vertical position.")
+                .with_example("set_y(Player, 0)")
+        );
+
+        // 19. turn_right(target, degrees)
+        registry.register(
+            BlockDefinition::new("turn_right", BlockCategory::Movement, "Rotate object clockwise by degrees", BlockType::Void, "MovementSystem::turnRight")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("degrees", BlockType::Number, false, Some("15"), "Degrees to rotate clockwise")
+                .with_doc("Rotates the sprite clockwise around its center point.")
+                .with_example("turn_right(Player, 15)")
+        );
+
+        // 20. turn_left(target, degrees)
+        registry.register(
+            BlockDefinition::new("turn_left", BlockCategory::Movement, "Rotate object counter-clockwise by degrees", BlockType::Void, "MovementSystem::turnLeft")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("degrees", BlockType::Number, false, Some("15"), "Degrees to rotate counter-clockwise")
+                .with_doc("Rotates the sprite counter-clockwise around its center point.")
+                .with_example("turn_left(Player, 15)")
+        );
+
+        // 21. point_in_direction(target, degrees)
+        registry.register(
+            BlockDefinition::new("point_in_direction", BlockCategory::Movement, "Set absolute facing angle of sprite", BlockType::Void, "MovementSystem::pointInDirection")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("degrees", BlockType::Number, false, Some("90"), "Absolute direction (0: up, 90: right, 180: down, 270: left)")
+                .with_doc("Points the sprite in an exact direction in degrees.")
+                .with_example("point_in_direction(Player, 90)")
+        );
+
+        // 22. point_towards(target, other)
+        registry.register(
+            BlockDefinition::new("point_towards", BlockCategory::Movement, "Point sprite towards another entity or mouse", BlockType::Void, "MovementSystem::pointTowards")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("other", BlockType::Object, false, None, "Entity or 'mouse' to face towards")
+                .with_doc("Adjusts the target's rotation so it faces directly at the other entity.")
+                .with_example("point_towards(Player, Enemy)")
+        );
+
+        // 23. bounce_on_edge(target)
+        registry.register(
+            BlockDefinition::new("bounce_on_edge", BlockCategory::Movement, "Bounce sprite if touching stage boundaries", BlockType::Void, "MovementSystem::bounceOnEdge")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_doc("Inverts the velocity direction if the sprite collides with stage borders.")
+                .with_example("bounce_on_edge(Player)")
+        );
+
+        // 24. distance_to(target, other) -> Number
+        registry.register(
+            BlockDefinition::new("distance_to", BlockCategory::Sensing, "Calculate Euclidean distance between two entities", BlockType::Number, "SensingSystem::distanceTo")
+                .with_param("target", BlockType::Object, false, None, "First entity")
+                .with_param("other", BlockType::Object, false, None, "Second entity")
+                .with_doc("Returns the distance in pixels between the centers of two entities.")
+                .with_example("if distance_to(Player, Enemy) < 100:")
+        );
+
+        // 25. x_position(target) -> Number
+        registry.register(
+            BlockDefinition::new("x_position", BlockCategory::Movement, "Get X coordinate of target object", BlockType::Number, "MovementSystem::getX")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_doc("Returns the current X position of the target entity.")
+                .with_example("current_x = x_position(Player)")
+        );
+
+        // 26. y_position(target) -> Number
+        registry.register(
+            BlockDefinition::new("y_position", BlockCategory::Movement, "Get Y coordinate of target object", BlockType::Number, "MovementSystem::getY")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_doc("Returns the current Y position of the target entity.")
+                .with_example("current_y = y_position(Player)")
+        );
+
+        // === LOOKS BLOCKS (from Scratch PDF p. 2-3) ===
+
+        // 27. say(target, text)
+        registry.register(
+            BlockDefinition::new("say", BlockCategory::Looks, "Show speech bubble text above sprite", BlockType::Void, "LooksSystem::say")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("text", BlockType::String, false, None, "Message text to display")
+                .with_doc("Renders a speech dialogue bubble above the sprite on stage.")
+                .with_example("say(Player, \"Hello, world!\")")
+        );
+
+        // 28. say_for(target, text, seconds)
+        registry.register(
+            BlockDefinition::new("say_for", BlockCategory::Looks, "Show speech bubble text for duration", BlockType::Void, "LooksSystem::sayFor")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("text", BlockType::String, false, None, "Message text")
+                .with_param("seconds", BlockType::Number, false, Some("2"), "Duration in seconds")
+                .with_doc("Renders a speech bubble above the sprite for a timed duration.")
+                .with_example("say_for(Player, \"Nice job!\", 2)")
+        );
+
+        // 29. think(target, text)
+        registry.register(
+            BlockDefinition::new("think", BlockCategory::Looks, "Show thought bubble above sprite", BlockType::Void, "LooksSystem::think")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("text", BlockType::String, false, None, "Thought text")
+                .with_doc("Renders a cloud thought bubble above the sprite.")
+                .with_example("think(Player, \"Hmm...\")")
+        );
+
+        // 30. show(target)
+        registry.register(
+            BlockDefinition::new("show", BlockCategory::Looks, "Make sprite visible on stage", BlockType::Void, "LooksSystem::show")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_doc("Makes the sprite visible if it was previously hidden.")
+                .with_example("show(Player)")
+        );
+
+        // 31. hide(target)
+        registry.register(
+            BlockDefinition::new("hide", BlockCategory::Looks, "Hide sprite from stage", BlockType::Void, "LooksSystem::hide")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_doc("Hides the sprite from the stage without deleting it.")
+                .with_example("hide(Player)")
+        );
+
+        // 32. set_size(target, percent)
+        registry.register(
+            BlockDefinition::new("set_size", BlockCategory::Looks, "Set sprite scale percentage", BlockType::Void, "LooksSystem::setSize")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("percent", BlockType::Number, false, Some("100"), "Scale percentage (100 is normal size)")
+                .with_doc("Sets the visual scale of the sprite as a percentage.")
+                .with_example("set_size(Player, 150)")
+        );
+
+        // 33. change_size(target, delta)
+        registry.register(
+            BlockDefinition::new("change_size", BlockCategory::Looks, "Change sprite scale percentage by delta", BlockType::Void, "LooksSystem::changeSize")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("delta", BlockType::Number, false, Some("10"), "Percentage delta to add or subtract")
+                .with_doc("Increases or decreases sprite size percentage.")
+                .with_example("change_size(Player, -10)")
+        );
+
+        // 34. next_costume(target)
+        registry.register(
+            BlockDefinition::new("next_costume", BlockCategory::Looks, "Switch sprite to next costume frame", BlockType::Void, "LooksSystem::nextCostume")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_doc("Cycles the sprite appearance to its next costume asset.")
+                .with_example("next_costume(Player)")
+        );
+
+        // 35. switch_costume(target, name)
+        registry.register(
+            BlockDefinition::new("switch_costume", BlockCategory::Looks, "Switch sprite to named costume asset", BlockType::Void, "LooksSystem::switchCostume")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("name", BlockType::String, false, None, "Costume / sprite asset name")
+                .with_doc("Sets the active costume of the sprite by name.")
+                .with_example("switch_costume(Player, \"running\")")
+        );
+
+        // 36. clear_effects(target)
+        registry.register(
+            BlockDefinition::new("clear_effects", BlockCategory::Looks, "Clear all graphical shader effects", BlockType::Void, "LooksSystem::clearEffects")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_doc("Removes color, ghost transparency, and brightness filters from the sprite.")
+                .with_example("clear_effects(Player)")
+        );
+
+        // 37. set_effect(target, effect, value)
+        registry.register(
+            BlockDefinition::new("set_effect", BlockCategory::Looks, "Set visual shader effect value", BlockType::Void, "LooksSystem::setEffect")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("effect", BlockType::String, false, None, "Effect name (e.g. \"ghost\", \"brightness\", \"color\")")
+                .with_param("value", BlockType::Number, false, Some("0"), "Effect intensity value")
+                .with_doc("Applies a visual filter or transparency effect to the sprite.")
+                .with_example("set_effect(Player, \"ghost\", 50)")
+        );
+
+        // 38. next_backdrop()
+        registry.register(
+            BlockDefinition::new("next_backdrop", BlockCategory::Scene, "Cycle stage to next background", BlockType::Void, "SceneSystem::nextBackdrop")
+                .with_doc("Cycles stage appearance to the next backdrop.")
+                .with_example("next_backdrop()")
+        );
+
+        // === SOUND & AUDIO BLOCKS (from Scratch PDF p. 3-4) ===
+
+        // 39. sound.stop_all()
+        registry.register(
+            BlockDefinition::new("sound.stop_all", BlockCategory::Audio, "Stop all playing sounds and music", BlockType::Void, "AudioSystem::stopAll")
+                .with_doc("Halts all active sound effects and background music tracks immediately.")
+                .with_example("sound.stop_all()")
+        );
+
+        // 40. sound.set_volume(percent)
+        registry.register(
+            BlockDefinition::new("sound.set_volume", BlockCategory::Audio, "Set audio volume percentage", BlockType::Void, "AudioSystem::setVolume")
+                .with_param("percent", BlockType::Number, false, Some("100"), "Volume percentage (0 to 100)")
+                .with_doc("Sets master audio playback volume.")
+                .with_example("sound.set_volume(80)")
+        );
+
+        // 41. sound.change_volume(delta)
+        registry.register(
+            BlockDefinition::new("sound.change_volume", BlockCategory::Audio, "Change audio volume percentage by delta", BlockType::Void, "AudioSystem::changeVolume")
+                .with_param("delta", BlockType::Number, false, Some("-10"), "Volume delta to add or subtract")
+                .with_doc("Increases or decreases audio playback volume.")
+                .with_example("sound.change_volume(-10)")
+        );
+
+        // 42. music.play_note(note, beats)
+        registry.register(
+            BlockDefinition::new("music.play_note", BlockCategory::Audio, "Play musical note for specified beats", BlockType::Void, "AudioSystem::playNote")
+                .with_param("note", BlockType::Number, false, Some("60"), "MIDI note number (60 is middle C)")
+                .with_param("beats", BlockType::Number, false, Some("0.5"), "Duration in musical beats")
+                .with_doc("Synthesizes a musical tone using the active tempo.")
+                .with_example("music.play_note(60, 0.5)")
+        );
+
+        // 43. music.set_tempo(bpm)
+        registry.register(
+            BlockDefinition::new("music.set_tempo", BlockCategory::Audio, "Set music tempo in beats per minute", BlockType::Void, "AudioSystem::setTempo")
+                .with_param("bpm", BlockType::Number, false, Some("60"), "Tempo in beats per minute")
+                .with_doc("Sets the tempo speed for musical notes and percussion.")
+                .with_example("music.set_tempo(120)")
+        );
+
+        // === SENSING BLOCKS (from Scratch PDF p. 8-9) ===
+
+        // 44. mouse_x() -> Number
+        registry.register(
+            BlockDefinition::new("mouse_x", BlockCategory::Sensing, "Get current mouse X screen coordinate", BlockType::Number, "SensingSystem::mouseX")
+                .with_doc("Returns the horizontal position of the mouse cursor.")
+                .with_example("if mouse_x() > 640:")
+        );
+
+        // 45. mouse_y() -> Number
+        registry.register(
+            BlockDefinition::new("mouse_y", BlockCategory::Sensing, "Get current mouse Y screen coordinate", BlockType::Number, "SensingSystem::mouseY")
+                .with_doc("Returns the vertical position of the mouse cursor.")
+                .with_example("if mouse_y() > 360:")
+        );
+
+        // 46. mouse_down() -> Boolean
+        registry.register(
+            BlockDefinition::new("mouse_down", BlockCategory::Sensing, "Check if left mouse button is pressed", BlockType::Boolean, "SensingSystem::mouseDown")
+                .with_doc("Returns true if the user is holding down the left mouse button.")
+                .with_example("if mouse_down():")
+        );
+
+        // 47. key_pressed(key) -> Boolean
+        registry.register(
+            BlockDefinition::new("key_pressed", BlockCategory::Sensing, "Check if a key or action is pressed", BlockType::Boolean, "SensingSystem::keyPressed")
+                .with_param("key", BlockType::String, false, None, "Action or key name (e.g. \"space\", \"jump\", \"left\")")
+                .with_doc("Returns true if the designated key or action is currently active.")
+                .with_example("if key_pressed(\"space\"):")
+        );
+
+        // 48. get_timer() -> Number
+        registry.register(
+            BlockDefinition::new("get_timer", BlockCategory::Sensing, "Get elapsed time since game start or reset", BlockType::Number, "SensingSystem::getTimer")
+                .with_doc("Returns the number of elapsed seconds on the runtime clock.")
+                .with_example("elapsed = get_timer()")
+        );
+
+        // 49. reset_timer()
+        registry.register(
+            BlockDefinition::new("reset_timer", BlockCategory::Sensing, "Reset game timer to zero", BlockType::Void, "SensingSystem::resetTimer")
+                .with_doc("Resets the internal elapsed seconds timer to 0.")
+                .with_example("reset_timer()")
+        );
+
+        // === CONTROL & CLONE BLOCKS (from Scratch PDF p. 7) ===
+
+        // 50. wait(seconds)
+        registry.register(
+            BlockDefinition::new("wait", BlockCategory::Control, "Wait for a duration in seconds", BlockType::Void, "ControlSystem::wait")
+                .with_param("seconds", BlockType::Number, false, Some("1"), "Time to pause in seconds")
+                .with_doc("Delays execution of the handler for the given seconds.")
+                .with_example("wait(1)")
+        );
+
+        // 51. clone(target)
+        registry.register(
+            BlockDefinition::new("clone", BlockCategory::Control, "Spawn a duplicate clone of target sprite", BlockType::Void, "ControlSystem::clone")
+                .with_param("target", BlockType::Object, false, None, "Target entity to clone")
+                .with_doc("Instantiates a clone of the sprite with identical components.")
+                .with_example("clone(Coin)")
+        );
+
+        // 52. delete_clone(target)
+        registry.register(
+            BlockDefinition::new("delete_clone", BlockCategory::Control, "Delete current cloned entity instance", BlockType::Void, "ControlSystem::deleteClone")
+                .with_param("target", BlockType::Object, false, None, "Clone entity to destroy")
+                .with_doc("Removes the cloned entity from the active scene.")
+                .with_example("delete_clone(Player)")
+        );
+
+        // 53. stop_all()
+        registry.register(
+            BlockDefinition::new("stop_all", BlockCategory::Control, "Stop all active game scripts and execution", BlockType::Void, "ControlSystem::stopAll")
+                .with_doc("Immediately terminates all running game events and halts the game loop.")
+                .with_example("stop_all()")
+        );
+
+        // === MATH & OPERATOR BLOCKS (from Scratch PDF p. 9) ===
+
+        // 54. random(min, max) -> Number
+        registry.register(
+            BlockDefinition::new("random", BlockCategory::Operators, "Pick random number between min and max", BlockType::Number, "MathSystem::random")
+                .with_param("min", BlockType::Number, false, Some("1"), "Minimum value")
+                .with_param("max", BlockType::Number, false, Some("10"), "Maximum value")
+                .with_doc("Returns a uniformly distributed random number between min and max inclusive.")
+                .with_example("roll = random(1, 6)")
+        );
+
+        // 55. math.round(n) -> Number
+        registry.register(
+            BlockDefinition::new("math.round", BlockCategory::Operators, "Round number to nearest whole integer", BlockType::Number, "MathSystem::round")
+                .with_param("n", BlockType::Number, false, None, "Input decimal number")
+                .with_doc("Rounds a floating-point number to the nearest integer.")
+                .with_example("val = math.round(4.6)")
+        );
+
+        // 56. math.abs(n) -> Number
+        registry.register(
+            BlockDefinition::new("math.abs", BlockCategory::Operators, "Absolute value of a number", BlockType::Number, "MathSystem::abs")
+                .with_param("n", BlockType::Number, false, None, "Input number")
+                .with_doc("Returns the positive magnitude of a number.")
+                .with_example("dist = math.abs(x1 - x2)")
+        );
+
+        // 57. math.sqrt(n) -> Number
+        registry.register(
+            BlockDefinition::new("math.sqrt", BlockCategory::Operators, "Square root of a number", BlockType::Number, "MathSystem::sqrt")
+                .with_param("n", BlockType::Number, false, None, "Input non-negative number")
+                .with_doc("Calculates the principal square root.")
+                .with_example("hyp = math.sqrt(a * a + b * b)")
+        );
+
+        // 58. math.sin(n) -> Number
+        registry.register(
+            BlockDefinition::new("math.sin", BlockCategory::Operators, "Sine of angle in degrees", BlockType::Number, "MathSystem::sin")
+                .with_param("degrees", BlockType::Number, false, None, "Angle in degrees")
+                .with_doc("Computes the trigonometric sine.")
+                .with_example("y_offset = math.sin(angle) * 10")
+        );
+
+        // 59. math.cos(n) -> Number
+        registry.register(
+            BlockDefinition::new("math.cos", BlockCategory::Operators, "Cosine of angle in degrees", BlockType::Number, "MathSystem::cos")
+                .with_param("degrees", BlockType::Number, false, None, "Angle in degrees")
+                .with_doc("Computes the trigonometric cosine.")
+                .with_example("x_offset = math.cos(angle) * 10")
+        );
+
+        // 60. text.join(a, b) -> String
+        registry.register(
+            BlockDefinition::new("text.join", BlockCategory::Operators, "Concatenate two strings", BlockType::String, "TextSystem::join")
+                .with_param("a", BlockType::String, false, None, "First string")
+                .with_param("b", BlockType::String, false, None, "Second string")
+                .with_doc("Attaches the second string to the end of the first string.")
+                .with_example("msg = text.join(\"Score: \", score)")
+        );
+
+        // 61. text.length(s) -> Number
+        registry.register(
+            BlockDefinition::new("text.length", BlockCategory::Operators, "Get character length of a string", BlockType::Number, "TextSystem::length")
+                .with_param("s", BlockType::String, false, None, "Input string")
+                .with_doc("Returns the number of characters in the text.")
+                .with_example("len = text.length(player_name)")
+        );
+
+        // === PEN BLOCKS (from Scratch PDF p. 4) ===
+
+        // 62. pen.clear()
+        registry.register(
+            BlockDefinition::new("pen.clear", BlockCategory::Pen, "Clear all canvas drawing trails", BlockType::Void, "PenSystem::clear")
+                .with_doc("Erases all drawn lines and stamps from the stage canvas.")
+                .with_example("pen.clear()")
+        );
+
+        // 63. pen.down(target)
+        registry.register(
+            BlockDefinition::new("pen.down", BlockCategory::Pen, "Put pen down to draw movement trails", BlockType::Void, "PenSystem::down")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_doc("Lowers the pen so lines are drawn whenever the sprite moves.")
+                .with_example("pen.down(Player)")
+        );
+
+        // 64. pen.up(target)
+        registry.register(
+            BlockDefinition::new("pen.up", BlockCategory::Pen, "Lift pen up to stop drawing trails", BlockType::Void, "PenSystem::up")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_doc("Raises the pen so moving the sprite does not draw lines.")
+                .with_example("pen.up(Player)")
+        );
+
+        // 65. pen.set_color(color)
+        registry.register(
+            BlockDefinition::new("pen.set_color", BlockCategory::Pen, "Set pen line stroke color", BlockType::Void, "PenSystem::setColor")
+                .with_param("color", BlockType::String, false, None, "Color name or hex string")
+                .with_doc("Sets the color of lines drawn by the pen.")
+                .with_example("pen.set_color(\"red\")")
+        );
+
+        // 66. pen.set_size(size)
+        registry.register(
+            BlockDefinition::new("pen.set_size", BlockCategory::Pen, "Set pen line thickness in pixels", BlockType::Void, "PenSystem::setSize")
+                .with_param("size", BlockType::Number, false, Some("1"), "Line thickness in pixels")
+                .with_doc("Sets the line thickness of pen drawings.")
+                .with_example("pen.set_size(3)")
+        );
+
+        // 67. pen.stamp(target)
+        registry.register(
+            BlockDefinition::new("pen.stamp", BlockCategory::Pen, "Stamp sprite image onto stage", BlockType::Void, "PenSystem::stamp")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_doc("Draws an imprint of the sprite's current costume onto the stage canvas.")
+                .with_example("pen.stamp(Player)")
+        );
+
         registry
     }
 

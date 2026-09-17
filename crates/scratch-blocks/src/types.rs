@@ -31,14 +31,18 @@ impl std::fmt::Display for BlockType {
 pub enum BlockCategory {
     Events,
     Movement,
+    Looks,
+    Audio,
+    Pen,
+    Variables,
+    Control,
+    Sensing,
+    Operators,
     Gameplay,
     Condition,
-    Audio,
     Animation,
     Camera,
     Scene,
-    Variables,
-    Control,
     Custom,
 }
 
@@ -47,14 +51,18 @@ impl std::fmt::Display for BlockCategory {
         match self {
             BlockCategory::Events => write!(f, "Events"),
             BlockCategory::Movement => write!(f, "Movement"),
+            BlockCategory::Looks => write!(f, "Looks"),
+            BlockCategory::Audio => write!(f, "Audio"),
+            BlockCategory::Pen => write!(f, "Pen"),
+            BlockCategory::Variables => write!(f, "Variables"),
+            BlockCategory::Control => write!(f, "Control"),
+            BlockCategory::Sensing => write!(f, "Sensing"),
+            BlockCategory::Operators => write!(f, "Operators"),
             BlockCategory::Gameplay => write!(f, "Gameplay"),
             BlockCategory::Condition => write!(f, "Condition"),
-            BlockCategory::Audio => write!(f, "Audio"),
             BlockCategory::Animation => write!(f, "Animation"),
             BlockCategory::Camera => write!(f, "Camera"),
             BlockCategory::Scene => write!(f, "Scene"),
-            BlockCategory::Variables => write!(f, "Variables"),
-            BlockCategory::Control => write!(f, "Control"),
             BlockCategory::Custom => write!(f, "Custom"),
         }
     }

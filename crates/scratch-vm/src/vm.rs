@@ -336,6 +336,241 @@ impl Vm {
                 world.set_var("__restart_scene", RuntimeValue::Bool(true));
                 Ok(None)
             }
+            "change_x" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    let dx = args.get(1).and_then(|v| as_f64(v)).unwrap_or(0.0) as f32;
+                    if let Some(ent) = world.get_entity_by_name_mut(target) {
+                        ent.transform.x += dx;
+                    }
+                }
+                Ok(None)
+            }
+            "set_x" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    let x = args.get(1).and_then(|v| as_f64(v)).unwrap_or(0.0) as f32;
+                    if let Some(ent) = world.get_entity_by_name_mut(target) {
+                        ent.transform.x = x;
+                    }
+                }
+                Ok(None)
+            }
+            "change_y" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    let dy = args.get(1).and_then(|v| as_f64(v)).unwrap_or(0.0) as f32;
+                    if let Some(ent) = world.get_entity_by_name_mut(target) {
+                        ent.transform.y += dy;
+                    }
+                }
+                Ok(None)
+            }
+            "set_y" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    let y = args.get(1).and_then(|v| as_f64(v)).unwrap_or(0.0) as f32;
+                    if let Some(ent) = world.get_entity_by_name_mut(target) {
+                        ent.transform.y = y;
+                    }
+                }
+                Ok(None)
+            }
+            "turn_right" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    let deg = args.get(1).and_then(|v| as_f64(v)).unwrap_or(15.0) as f32;
+                    if let Some(ent) = world.get_entity_by_name_mut(target) {
+                        ent.transform.rotation += deg;
+                    }
+                }
+                Ok(None)
+            }
+            "turn_left" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    let deg = args.get(1).and_then(|v| as_f64(v)).unwrap_or(15.0) as f32;
+                    if let Some(ent) = world.get_entity_by_name_mut(target) {
+                        ent.transform.rotation -= deg;
+                    }
+                }
+                Ok(None)
+            }
+            "point_in_direction" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    let deg = args.get(1).and_then(|v| as_f64(v)).unwrap_or(90.0) as f32;
+                    if let Some(ent) = world.get_entity_by_name_mut(target) {
+                        ent.transform.rotation = deg;
+                    }
+                }
+                Ok(None)
+            }
+            "bounce_on_edge" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    if let Some(ent) = world.get_entity_by_name_mut(target) {
+                        if ent.transform.x <= 0.0 || ent.transform.x >= 1280.0 {
+                            ent.velocity.0 = -ent.velocity.0;
+                        }
+                        if ent.transform.y <= 0.0 || ent.transform.y >= 720.0 {
+                            ent.velocity.1 = -ent.velocity.1;
+                        }
+                    }
+                }
+                Ok(None)
+            }
+            "x_position" => {
+                let x = args
+                    .first()
+                    .and_then(|v| as_str(v))
+                    .and_then(|name| world.get_entity_by_name(name))
+                    .map(|ent| ent.transform.x as f64)
+                    .unwrap_or(0.0);
+                Ok(Some(BytecodeValue::Number(x)))
+            }
+            "y_position" => {
+                let y = args
+                    .first()
+                    .and_then(|v| as_str(v))
+                    .and_then(|name| world.get_entity_by_name(name))
+                    .map(|ent| ent.transform.y as f64)
+                    .unwrap_or(0.0);
+                Ok(Some(BytecodeValue::Number(y)))
+            }
+            "distance_to" => {
+                let a = args.first().and_then(|v| as_str(v)).and_then(|n| world.get_entity_by_name(n));
+                let b = args.get(1).and_then(|v| as_str(v)).and_then(|n| world.get_entity_by_name(n));
+                if let (Some(ea), Some(eb)) = (a, b) {
+                    let dx = (ea.transform.x - eb.transform.x) as f64;
+                    let dy = (ea.transform.y - eb.transform.y) as f64;
+                    Ok(Some(BytecodeValue::Number((dx * dx + dy * dy).sqrt())))
+                } else {
+                    Ok(Some(BytecodeValue::Number(0.0)))
+                }
+            }
+            "show" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    if let Some(ent) = world.get_entity_by_name_mut(target) {
+                        ent.visible = true;
+                    }
+                }
+                Ok(None)
+            }
+            "hide" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    if let Some(ent) = world.get_entity_by_name_mut(target) {
+                        ent.visible = false;
+                    }
+                }
+                Ok(None)
+            }
+            "set_size" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    let pct = args.get(1).and_then(|v| as_f64(v)).unwrap_or(100.0) as f32;
+                    if let Some(ent) = world.get_entity_by_name_mut(target) {
+                        ent.transform.scale_x = pct / 100.0;
+                        ent.transform.scale_y = pct / 100.0;
+                    }
+                }
+                Ok(None)
+            }
+            "change_size" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    let delta = args.get(1).and_then(|v| as_f64(v)).unwrap_or(10.0) as f32;
+                    if let Some(ent) = world.get_entity_by_name_mut(target) {
+                        ent.transform.scale_x += delta / 100.0;
+                        ent.transform.scale_y += delta / 100.0;
+                    }
+                }
+                Ok(None)
+            }
+            "mouse_x" => Ok(Some(BytecodeValue::Number(world.mouse_pos.0 as f64))),
+            "mouse_y" => Ok(Some(BytecodeValue::Number(world.mouse_pos.1 as f64))),
+            "mouse_down" => Ok(Some(BytecodeValue::Bool(world.mouse_down))),
+            "key_pressed" => {
+                let act = args.first().and_then(|v| as_str(v)).unwrap_or("");
+                Ok(Some(BytecodeValue::Bool(world.input_actions_down.contains(act))))
+            }
+            "get_timer" => {
+                let t = world.get_var("__runtime_timer").map(|v| match v { RuntimeValue::Number(n) => *n, _ => 0.0 }).unwrap_or(0.0);
+                Ok(Some(BytecodeValue::Number(t)))
+            }
+            "reset_timer" => {
+                world.set_var("__runtime_timer", RuntimeValue::Number(0.0));
+                Ok(None)
+            }
+            "random" => {
+                let min = args.first().and_then(|v| as_f64(v)).unwrap_or(1.0);
+                let max = args.get(1).and_then(|v| as_f64(v)).unwrap_or(10.0);
+                let seed = world.get_var("__random_seed").map(|v| match v { RuntimeValue::Number(n) => *n, _ => 12345.0 }).unwrap_or(12345.0);
+                let next_seed = (seed * 1103515245.0 + 12345.0) % 2147483648.0;
+                world.set_var("__random_seed", RuntimeValue::Number(next_seed));
+                let ratio = next_seed / 2147483648.0;
+                let val = min + ratio * (max - min);
+                Ok(Some(BytecodeValue::Number(val.round())))
+            }
+            "math.round" => {
+                let n = args.first().and_then(|v| as_f64(v)).unwrap_or(0.0);
+                Ok(Some(BytecodeValue::Number(n.round())))
+            }
+            "math.abs" => {
+                let n = args.first().and_then(|v| as_f64(v)).unwrap_or(0.0);
+                Ok(Some(BytecodeValue::Number(n.abs())))
+            }
+            "math.sqrt" => {
+                let n = args.first().and_then(|v| as_f64(v)).unwrap_or(0.0);
+                Ok(Some(BytecodeValue::Number(if n < 0.0 { 0.0 } else { n.sqrt() })))
+            }
+            "math.sin" => {
+                let deg = args.first().and_then(|v| as_f64(v)).unwrap_or(0.0);
+                Ok(Some(BytecodeValue::Number(deg.to_radians().sin())))
+            }
+            "math.cos" => {
+                let deg = args.first().and_then(|v| as_f64(v)).unwrap_or(0.0);
+                Ok(Some(BytecodeValue::Number(deg.to_radians().cos())))
+            }
+            "math.floor" => {
+                let n = args.first().and_then(|v| as_f64(v)).unwrap_or(0.0);
+                Ok(Some(BytecodeValue::Number(n.floor())))
+            }
+            "math.ceil" => {
+                let n = args.first().and_then(|v| as_f64(v)).unwrap_or(0.0);
+                Ok(Some(BytecodeValue::Number(n.ceil())))
+            }
+            "text.join" => {
+                let to_text = |v: Option<&BytecodeValue>| -> String {
+                    match v {
+                        Some(BytecodeValue::String(s)) | Some(BytecodeValue::Object(s)) => s.clone(),
+                        Some(BytecodeValue::Number(n)) => n.to_string(),
+                        Some(BytecodeValue::Bool(b)) => b.to_string(),
+                        Some(BytecodeValue::Nil) | None => String::new(),
+                    }
+                };
+                let a = to_text(args.first());
+                let b = to_text(args.get(1));
+                Ok(Some(BytecodeValue::String(format!("{}{}", a, b))))
+            }
+            "text.length" => {
+                let s = args.first().and_then(|v| as_str(v)).unwrap_or("");
+                Ok(Some(BytecodeValue::Number(s.chars().count() as f64)))
+            }
+            "text.contains" => {
+                let s = args.first().and_then(|v| as_str(v)).unwrap_or("");
+                let sub = args.get(1).and_then(|v| as_str(v)).unwrap_or("");
+                Ok(Some(BytecodeValue::Bool(s.contains(sub))))
+            }
+            "sound.stop_all" => {
+                world.set_var("__audio_stopped", RuntimeValue::Bool(true));
+                Ok(None)
+            }
+            "sound.set_volume" => {
+                let vol = args.first().and_then(|v| as_f64(v)).unwrap_or(100.0);
+                world.set_var("__master_volume", RuntimeValue::Number(vol));
+                Ok(None)
+            }
+            "sound.change_volume" => {
+                let delta = args.first().and_then(|v| as_f64(v)).unwrap_or(0.0);
+                let cur = world.get_var("__master_volume").map(|v| match v { RuntimeValue::Number(n) => *n, _ => 100.0 }).unwrap_or(100.0);
+                world.set_var("__master_volume", RuntimeValue::Number((cur + delta).clamp(0.0, 100.0)));
+                Ok(None)
+            }
+            "stop_all" => {
+                world.set_var("__game_stopped", RuntimeValue::Bool(true));
+                Ok(None)
+            }
             _ => Ok(None),
         }
     }
