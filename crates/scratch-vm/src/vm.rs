@@ -567,6 +567,209 @@ impl Vm {
                 world.set_var("__master_volume", RuntimeValue::Number((cur + delta).clamp(0.0, 100.0)));
                 Ok(None)
             }
+            "math.tan" => {
+                let deg = args.first().and_then(|v| as_f64(v)).unwrap_or(0.0);
+                Ok(Some(BytecodeValue::Number(deg.to_radians().tan())))
+            }
+            "math.asin" => {
+                let n = args.first().and_then(|v| as_f64(v)).unwrap_or(0.0);
+                Ok(Some(BytecodeValue::Number(n.clamp(-1.0, 1.0).asin().to_degrees())))
+            }
+            "math.acos" => {
+                let n = args.first().and_then(|v| as_f64(v)).unwrap_or(0.0);
+                Ok(Some(BytecodeValue::Number(n.clamp(-1.0, 1.0).acos().to_degrees())))
+            }
+            "math.atan" => {
+                let n = args.first().and_then(|v| as_f64(v)).unwrap_or(0.0);
+                Ok(Some(BytecodeValue::Number(n.atan().to_degrees())))
+            }
+            "math.ln" => {
+                let n = args.first().and_then(|v| as_f64(v)).unwrap_or(1.0);
+                Ok(Some(BytecodeValue::Number(if n > 0.0 { n.ln() } else { 0.0 })))
+            }
+            "math.log" => {
+                let n = args.first().and_then(|v| as_f64(v)).unwrap_or(1.0);
+                Ok(Some(BytecodeValue::Number(if n > 0.0 { n.log10() } else { 0.0 })))
+            }
+            "math.exp" => {
+                let n = args.first().and_then(|v| as_f64(v)).unwrap_or(0.0);
+                Ok(Some(BytecodeValue::Number(n.exp())))
+            }
+            "math.pow" => {
+                let base = args.first().and_then(|v| as_f64(v)).unwrap_or(1.0);
+                let exp = args.get(1).and_then(|v| as_f64(v)).unwrap_or(1.0);
+                Ok(Some(BytecodeValue::Number(base.powf(exp))))
+            }
+            "math.mod" => {
+                let a = args.first().and_then(|v| as_f64(v)).unwrap_or(0.0);
+                let b = args.get(1).and_then(|v| as_f64(v)).unwrap_or(1.0);
+                let res = if b != 0.0 { ((a % b) + b) % b } else { 0.0 };
+                Ok(Some(BytecodeValue::Number(res)))
+            }
+            "math.min" => {
+                let a = args.first().and_then(|v| as_f64(v)).unwrap_or(0.0);
+                let b = args.get(1).and_then(|v| as_f64(v)).unwrap_or(0.0);
+                Ok(Some(BytecodeValue::Number(a.min(b))))
+            }
+            "math.max" => {
+                let a = args.first().and_then(|v| as_f64(v)).unwrap_or(0.0);
+                let b = args.get(1).and_then(|v| as_f64(v)).unwrap_or(0.0);
+                Ok(Some(BytecodeValue::Number(a.max(b))))
+            }
+            "text.letter_at" => {
+                let s = args.first().and_then(|v| as_str(v)).unwrap_or("");
+                let idx = args.get(1).and_then(|v| as_f64(v)).unwrap_or(1.0) as usize;
+                let ch = if idx >= 1 {
+                    s.chars().nth(idx - 1).map(|c| c.to_string()).unwrap_or_default()
+                } else {
+                    String::new()
+                };
+                Ok(Some(BytecodeValue::String(ch)))
+            }
+            "text.upper" => {
+                let s = args.first().and_then(|v| as_str(v)).unwrap_or("");
+                Ok(Some(BytecodeValue::String(s.to_uppercase())))
+            }
+            "text.lower" => {
+                let s = args.first().and_then(|v| as_str(v)).unwrap_or("");
+                Ok(Some(BytecodeValue::String(s.to_lowercase())))
+            }
+            "get_direction" => {
+                let rot = args
+                    .first()
+                    .and_then(|v| as_str(v))
+                    .and_then(|name| world.get_entity_by_name(name))
+                    .map(|ent| ent.transform.rotation as f64)
+                    .unwrap_or(0.0);
+                Ok(Some(BytecodeValue::Number(rot)))
+            }
+            "get_size" => {
+                let size = args
+                    .first()
+                    .and_then(|v| as_str(v))
+                    .and_then(|name| world.get_entity_by_name(name))
+                    .map(|ent| (ent.transform.scale_x * 100.0).round() as f64)
+                    .unwrap_or(100.0);
+                Ok(Some(BytecodeValue::Number(size)))
+            }
+            "get_costume_number" => {
+                let num = args
+                    .first()
+                    .and_then(|v| as_str(v))
+                    .and_then(|name| world.get_entity_by_name(name))
+                    .map(|_| 1.0)
+                    .unwrap_or(1.0);
+                Ok(Some(BytecodeValue::Number(num)))
+            }
+            "get_backdrop_name" => {
+                Ok(Some(BytecodeValue::String(world.background.clone())))
+            }
+            "think_for" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    let msg = args.get(1).and_then(|v| as_str(v)).unwrap_or("");
+                    world.set_var(&format!("__{}_thought", target), RuntimeValue::String(msg.to_string()));
+                }
+                Ok(None)
+            }
+            "change_effect" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    let effect = args.get(1).and_then(|v| as_str(v)).unwrap_or("color");
+                    let delta = args.get(2).and_then(|v| as_f64(v)).unwrap_or(25.0);
+                    let var_name = format!("__{}_effect_{}", target, effect);
+                    let cur = world.get_var(&var_name).map(|v| match v { RuntimeValue::Number(n) => *n, _ => 0.0 }).unwrap_or(0.0);
+                    world.set_var(&var_name, RuntimeValue::Number(cur + delta));
+                }
+                Ok(None)
+            }
+            "sound.get_volume" => {
+                let cur = world.get_var("__master_volume").map(|v| match v { RuntimeValue::Number(n) => *n, _ => 100.0 }).unwrap_or(100.0);
+                Ok(Some(BytecodeValue::Number(cur)))
+            }
+            "music.get_tempo" => {
+                let bpm = world.get_var("__music_tempo").map(|v| match v { RuntimeValue::Number(n) => *n, _ => 60.0 }).unwrap_or(60.0);
+                Ok(Some(BytecodeValue::Number(bpm)))
+            }
+            "music.change_tempo" => {
+                let delta = args.first().and_then(|v| as_f64(v)).unwrap_or(20.0);
+                let cur = world.get_var("__music_tempo").map(|v| match v { RuntimeValue::Number(n) => *n, _ => 60.0 }).unwrap_or(60.0);
+                world.set_var("__music_tempo", RuntimeValue::Number((cur + delta).max(20.0)));
+                Ok(None)
+            }
+            "music.set_instrument" => {
+                let inst = args.first().and_then(|v| as_f64(v)).unwrap_or(1.0);
+                world.set_var("__music_instrument", RuntimeValue::Number(inst));
+                Ok(None)
+            }
+            "music.play_drum" => {
+                let drum = args.first().and_then(|v| as_f64(v)).unwrap_or(1.0);
+                let beats = args.get(1).and_then(|v| as_f64(v)).unwrap_or(0.25);
+                world.set_var("__last_drum", RuntimeValue::Number(drum));
+                world.set_var("__last_drum_beats", RuntimeValue::Number(beats));
+                Ok(None)
+            }
+            "music.rest" => {
+                Ok(None)
+            }
+            "pen.change_size" => {
+                let delta = args.first().and_then(|v| as_f64(v)).unwrap_or(1.0);
+                let cur = world.get_var("__pen_size").map(|v| match v { RuntimeValue::Number(n) => *n, _ => 1.0 }).unwrap_or(1.0);
+                world.set_var("__pen_size", RuntimeValue::Number((cur + delta).max(1.0)));
+                Ok(None)
+            }
+            "pen.change_color" => {
+                let delta = args.first().and_then(|v| as_f64(v)).unwrap_or(10.0);
+                let cur = world.get_var("__pen_color_hue").map(|v| match v { RuntimeValue::Number(n) => *n, _ => 0.0 }).unwrap_or(0.0);
+                world.set_var("__pen_color_hue", RuntimeValue::Number((cur + delta) % 200.0));
+                Ok(None)
+            }
+            "pen.set_shade" => {
+                let shade = args.first().and_then(|v| as_f64(v)).unwrap_or(50.0);
+                world.set_var("__pen_shade", RuntimeValue::Number(shade.clamp(0.0, 100.0)));
+                Ok(None)
+            }
+            "pen.change_shade" => {
+                let delta = args.first().and_then(|v| as_f64(v)).unwrap_or(10.0);
+                let cur = world.get_var("__pen_shade").map(|v| match v { RuntimeValue::Number(n) => *n, _ => 50.0 }).unwrap_or(50.0);
+                world.set_var("__pen_shade", RuntimeValue::Number((cur + delta).clamp(0.0, 100.0)));
+                Ok(None)
+            }
+            "current_time" => {
+                let unit = args.first().and_then(|v| as_str(v)).unwrap_or("second");
+                let dur = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
+                let total_secs = dur.as_secs();
+                let val = match unit.to_lowercase().as_str() {
+                    "second" | "seconds" => (total_secs % 60) as f64,
+                    "minute" | "minutes" => ((total_secs / 60) % 60) as f64,
+                    "hour" | "hours" => ((total_secs / 3600) % 24) as f64,
+                    "day_of_week" => (((total_secs / 86400) + 4) % 7 + 1) as f64,
+                    "days" | "date" => {
+                        let days_since_1970 = total_secs / 86400;
+                        ((days_since_1970 % 30) + 1) as f64
+                    }
+                    "month" => {
+                        let days_since_1970 = total_secs / 86400;
+                        (((days_since_1970 / 30) % 12) + 1) as f64
+                    }
+                    "year" => {
+                        let years = 1970 + total_secs / (86400 * 365);
+                        years as f64
+                    }
+                    _ => total_secs as f64,
+                };
+                Ok(Some(BytecodeValue::Number(val)))
+            }
+            "days_since_2000" => {
+                let dur = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
+                let secs = dur.as_secs_f64();
+                let days = (secs - 946684800.0) / 86400.0;
+                Ok(Some(BytecodeValue::Number(days)))
+            }
+            "get_username" => {
+                let name = std::env::var("USERNAME")
+                    .or_else(|_| std::env::var("USER"))
+                    .unwrap_or_else(|_| "player".to_string());
+                Ok(Some(BytecodeValue::String(name)))
+            }
             "stop_all" => {
                 world.set_var("__game_stopped", RuntimeValue::Bool(true));
                 Ok(None)

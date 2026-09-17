@@ -214,5 +214,81 @@ when start:
         assert_eq!(world.get_var("has_sub").unwrap().as_bool(), true);
         assert!((world.get_var("dist").unwrap().as_number().unwrap() - 5.0).abs() < 1e-4);
     }
+
+    #[test]
+    fn test_vm_executes_extended_math_and_reporters() {
+        let code = r#"
+when start:
+    set_x(Player, 10)
+    set_y(Player, 20)
+    turn_right(Player, 45)
+    set_size(Player, 150)
+    
+    dir = get_direction(Player)
+    sz = get_size(Player)
+    costume = get_costume_number(Player)
+    bg = get_backdrop_name()
+    
+    tan_val = math.tan(45)
+    asin_val = math.asin(1)
+    acos_val = math.acos(1)
+    atan_val = math.atan(1)
+    ln_val = math.ln(1)
+    log_val = math.log(100)
+    exp_val = math.exp(0)
+    pow_val = math.pow(2, 3)
+    mod_val = math.mod(14, 5)
+    min_val = math.min(10, 20)
+    max_val = math.max(10, 20)
+    
+    first_letter = text.letter_at("Scratch", 1)
+    third_letter = text.letter_at("Scratch", 3)
+    upper_txt = text.upper("hello")
+    lower_txt = text.lower("WORLD")
+    
+    vol = sound.get_volume()
+    tempo = music.get_tempo()
+    user = get_username()
+"#;
+        let ast = parse(code).expect("parse ok");
+        let reg = BlockRegistry::core();
+        let ir = lower_ast_to_ir(&ast, &reg).expect("ir ok");
+
+        let mut compiler = BytecodeCompiler::new();
+        let program = compiler.compile_program(&ir);
+
+        let mut world = World::new();
+        world.background = "SkyWorld".into();
+        world.spawn_entity("Player");
+
+        let mut vm = Vm::default();
+        vm.execute(&program.events[0].chunk, &mut world, &reg).expect("vm execute");
+
+        assert_eq!(world.get_var("dir").unwrap().as_number(), Some(45.0));
+        assert_eq!(world.get_var("sz").unwrap().as_number(), Some(150.0));
+        assert_eq!(world.get_var("costume").unwrap().as_number(), Some(1.0));
+        assert_eq!(world.get_var("bg").unwrap().as_string(), Some("SkyWorld"));
+
+        assert!((world.get_var("tan_val").unwrap().as_number().unwrap() - 1.0).abs() < 1e-4);
+        assert!((world.get_var("asin_val").unwrap().as_number().unwrap() - 90.0).abs() < 1e-4);
+        assert!((world.get_var("acos_val").unwrap().as_number().unwrap() - 0.0).abs() < 1e-4);
+        assert!((world.get_var("atan_val").unwrap().as_number().unwrap() - 45.0).abs() < 1e-4);
+        assert_eq!(world.get_var("ln_val").unwrap().as_number(), Some(0.0));
+        assert_eq!(world.get_var("log_val").unwrap().as_number(), Some(2.0));
+        assert_eq!(world.get_var("exp_val").unwrap().as_number(), Some(1.0));
+        assert_eq!(world.get_var("pow_val").unwrap().as_number(), Some(8.0));
+        assert_eq!(world.get_var("mod_val").unwrap().as_number(), Some(4.0));
+        assert_eq!(world.get_var("min_val").unwrap().as_number(), Some(10.0));
+        assert_eq!(world.get_var("max_val").unwrap().as_number(), Some(20.0));
+
+        assert_eq!(world.get_var("first_letter").unwrap().as_string(), Some("S"));
+        assert_eq!(world.get_var("third_letter").unwrap().as_string(), Some("r"));
+        assert_eq!(world.get_var("upper_txt").unwrap().as_string(), Some("HELLO"));
+        assert_eq!(world.get_var("lower_txt").unwrap().as_string(), Some("world"));
+
+        assert_eq!(world.get_var("vol").unwrap().as_number(), Some(100.0));
+        assert_eq!(world.get_var("tempo").unwrap().as_number(), Some(60.0));
+        assert!(!world.get_var("user").unwrap().as_string().unwrap().is_empty());
+    }
 }
 

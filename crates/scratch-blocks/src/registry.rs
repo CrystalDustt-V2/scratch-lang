@@ -588,6 +588,276 @@ impl BlockRegistry {
                 .with_example("pen.stamp(Player)")
         );
 
+        // === ADDITIONAL OPERATOR & MATH BLOCKS ===
+
+        registry.register(
+            BlockDefinition::new("math.floor", BlockCategory::Operators, "Round number down to nearest integer", BlockType::Number, "MathSystem::floor")
+                .with_param("n", BlockType::Number, false, None, "Input decimal number")
+                .with_doc("Returns the largest integer less than or equal to n.")
+                .with_example("val = math.floor(4.9)")
+        );
+
+        registry.register(
+            BlockDefinition::new("math.ceil", BlockCategory::Operators, "Round number up to nearest integer", BlockType::Number, "MathSystem::ceil")
+                .with_param("n", BlockType::Number, false, None, "Input decimal number")
+                .with_doc("Returns the smallest integer greater than or equal to n.")
+                .with_example("val = math.ceil(4.1)")
+        );
+
+        registry.register(
+            BlockDefinition::new("math.tan", BlockCategory::Operators, "Tangent of angle in degrees", BlockType::Number, "MathSystem::tan")
+                .with_param("degrees", BlockType::Number, false, None, "Angle in degrees")
+                .with_doc("Computes the trigonometric tangent.")
+                .with_example("slope = math.tan(angle)")
+        );
+
+        registry.register(
+            BlockDefinition::new("math.asin", BlockCategory::Operators, "Arcsine in degrees", BlockType::Number, "MathSystem::asin")
+                .with_param("n", BlockType::Number, false, None, "Value between -1.0 and 1.0")
+                .with_doc("Calculates inverse sine in degrees.")
+                .with_example("angle = math.asin(0.5)")
+        );
+
+        registry.register(
+            BlockDefinition::new("math.acos", BlockCategory::Operators, "Arccosine in degrees", BlockType::Number, "MathSystem::acos")
+                .with_param("n", BlockType::Number, false, None, "Value between -1.0 and 1.0")
+                .with_doc("Calculates inverse cosine in degrees.")
+                .with_example("angle = math.acos(0.5)")
+        );
+
+        registry.register(
+            BlockDefinition::new("math.atan", BlockCategory::Operators, "Arctangent in degrees", BlockType::Number, "MathSystem::atan")
+                .with_param("n", BlockType::Number, false, None, "Input number")
+                .with_doc("Calculates inverse tangent in degrees.")
+                .with_example("angle = math.atan(ratio)")
+        );
+
+        registry.register(
+            BlockDefinition::new("math.ln", BlockCategory::Operators, "Natural logarithm (base e)", BlockType::Number, "MathSystem::ln")
+                .with_param("n", BlockType::Number, false, None, "Input positive number")
+                .with_doc("Calculates natural logarithm.")
+                .with_example("log_val = math.ln(10)")
+        );
+
+        registry.register(
+            BlockDefinition::new("math.log", BlockCategory::Operators, "Common logarithm (base 10)", BlockType::Number, "MathSystem::log")
+                .with_param("n", BlockType::Number, false, None, "Input positive number")
+                .with_doc("Calculates base-10 logarithm.")
+                .with_example("orders = math.log(100)")
+        );
+
+        registry.register(
+            BlockDefinition::new("math.exp", BlockCategory::Operators, "Exponential e raised to power n", BlockType::Number, "MathSystem::exp")
+                .with_param("n", BlockType::Number, false, None, "Power exponent")
+                .with_doc("Calculates e^n.")
+                .with_example("val = math.exp(2)")
+        );
+
+        registry.register(
+            BlockDefinition::new("math.pow", BlockCategory::Operators, "Raise base to exponent power", BlockType::Number, "MathSystem::pow")
+                .with_param("base", BlockType::Number, false, None, "Base number")
+                .with_param("exponent", BlockType::Number, false, None, "Exponent power")
+                .with_doc("Calculates base^exponent.")
+                .with_example("area = math.pow(radius, 2) * 3.14159")
+        );
+
+        registry.register(
+            BlockDefinition::new("math.mod", BlockCategory::Operators, "Euclidean modulo remainder", BlockType::Number, "MathSystem::mod")
+                .with_param("a", BlockType::Number, false, None, "Dividend")
+                .with_param("b", BlockType::Number, false, None, "Divisor")
+                .with_doc("Calculates positive mathematical modulo remainder.")
+                .with_example("rem = math.mod(10, 3)")
+        );
+
+        registry.register(
+            BlockDefinition::new("math.min", BlockCategory::Operators, "Minimum of two numbers", BlockType::Number, "MathSystem::min")
+                .with_param("a", BlockType::Number, false, None, "First number")
+                .with_param("b", BlockType::Number, false, None, "Second number")
+                .with_doc("Returns the smaller of two numbers.")
+                .with_example("lowest = math.min(health, max_health)")
+        );
+
+        registry.register(
+            BlockDefinition::new("math.max", BlockCategory::Operators, "Maximum of two numbers", BlockType::Number, "MathSystem::max")
+                .with_param("a", BlockType::Number, false, None, "First number")
+                .with_param("b", BlockType::Number, false, None, "Second number")
+                .with_doc("Returns the larger of two numbers.")
+                .with_example("clamped = math.max(0, health)")
+        );
+
+        // === ADDITIONAL STRING REPORTERS ===
+
+        registry.register(
+            BlockDefinition::new("text.contains", BlockCategory::Operators, "Check if string contains substring", BlockType::Boolean, "TextSystem::contains")
+                .with_param("s", BlockType::String, false, None, "Source string")
+                .with_param("substring", BlockType::String, false, None, "Substring to search for")
+                .with_doc("Returns true if s contains substring.")
+                .with_example("if text.contains(word, \"cat\"):")
+        );
+
+        registry.register(
+            BlockDefinition::new("text.letter_at", BlockCategory::Operators, "Get 1-indexed character of string", BlockType::String, "TextSystem::letterAt")
+                .with_param("s", BlockType::String, false, None, "Input string")
+                .with_param("index", BlockType::Number, false, Some("1"), "1-based character position")
+                .with_doc("Returns the single character at the 1-based index.")
+                .with_example("first = text.letter_at(\"world\", 1)")
+        );
+
+        registry.register(
+            BlockDefinition::new("text.upper", BlockCategory::Operators, "Convert text to uppercase", BlockType::String, "TextSystem::upper")
+                .with_param("s", BlockType::String, false, None, "Input string")
+                .with_doc("Returns text converted entirely to uppercase.")
+                .with_example("loud = text.upper(\"hello\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("text.lower", BlockCategory::Operators, "Convert text to lowercase", BlockType::String, "TextSystem::lower")
+                .with_param("s", BlockType::String, false, None, "Input string")
+                .with_doc("Returns text converted entirely to lowercase.")
+                .with_example("quiet = text.lower(\"HELLO\")")
+        );
+
+        // === MOTION & LOOKS REPORTERS ===
+
+        registry.register(
+            BlockDefinition::new("get_direction", BlockCategory::Movement, "Get facing rotation of sprite in degrees", BlockType::Number, "MovementSystem::getDirection")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_doc("Returns the current facing angle in degrees.")
+                .with_example("angle = get_direction(Player)")
+        );
+
+        registry.register(
+            BlockDefinition::new("get_size", BlockCategory::Looks, "Get sprite scale percentage", BlockType::Number, "LooksSystem::getSize")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_doc("Returns the current scale percentage of the sprite.")
+                .with_example("scale = get_size(Player)")
+        );
+
+        registry.register(
+            BlockDefinition::new("get_costume_number", BlockCategory::Looks, "Get active costume number", BlockType::Number, "LooksSystem::getCostumeNumber")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_doc("Returns the index of the sprite's active costume frame.")
+                .with_example("c_num = get_costume_number(Player)")
+        );
+
+        registry.register(
+            BlockDefinition::new("get_backdrop_name", BlockCategory::Scene, "Get active scene backdrop name", BlockType::String, "SceneSystem::getBackdropName")
+                .with_doc("Returns the name of current background/backdrop.")
+                .with_example("bg = get_backdrop_name()")
+        );
+
+        registry.register(
+            BlockDefinition::new("think_for", BlockCategory::Looks, "Show thought bubble for duration", BlockType::Void, "LooksSystem::thinkFor")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("text", BlockType::String, false, None, "Thought text")
+                .with_param("seconds", BlockType::Number, false, Some("2"), "Duration in seconds")
+                .with_doc("Displays a thought bubble for the specified time.")
+                .with_example("think_for(Player, \"Hmm...\", 2)")
+        );
+
+        registry.register(
+            BlockDefinition::new("change_effect", BlockCategory::Looks, "Change visual shader effect by delta", BlockType::Void, "LooksSystem::changeEffect")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("effect", BlockType::String, false, Some("\"color\""), "Effect name")
+                .with_param("delta", BlockType::Number, false, Some("25"), "Delta amount")
+                .with_doc("Alters a visual effect by delta value.")
+                .with_example("change_effect(Player, \"ghost\", 25)")
+        );
+
+        // === SOUND & MUSIC REPORTERS & EXTENSIONS ===
+
+        registry.register(
+            BlockDefinition::new("sound.get_volume", BlockCategory::Audio, "Get current master audio volume", BlockType::Number, "AudioSystem::getVolume")
+                .with_doc("Returns master sound volume percentage (0 - 100).")
+                .with_example("vol = sound.get_volume()")
+        );
+
+        registry.register(
+            BlockDefinition::new("music.get_tempo", BlockCategory::Audio, "Get current music tempo BPM", BlockType::Number, "AudioSystem::getTempo")
+                .with_doc("Returns current musical tempo in beats per minute.")
+                .with_example("bpm = music.get_tempo()")
+        );
+
+        registry.register(
+            BlockDefinition::new("music.change_tempo", BlockCategory::Audio, "Change music tempo by delta BPM", BlockType::Void, "AudioSystem::changeTempo")
+                .with_param("delta", BlockType::Number, false, Some("20"), "Delta BPM")
+                .with_doc("Adjusts music tempo BPM by delta.")
+                .with_example("music.change_tempo(10)")
+        );
+
+        registry.register(
+            BlockDefinition::new("music.set_instrument", BlockCategory::Audio, "Set MIDI instrument sound preset", BlockType::Void, "AudioSystem::setInstrument")
+                .with_param("instrument", BlockType::Number, false, Some("1"), "Instrument ID number")
+                .with_doc("Selects instrument voice preset (1 - 21).")
+                .with_example("music.set_instrument(2)")
+        );
+
+        registry.register(
+            BlockDefinition::new("music.play_drum", BlockCategory::Audio, "Play drum instrument hit for beats", BlockType::Void, "AudioSystem::playDrum")
+                .with_param("drum", BlockType::Number, false, Some("1"), "Drum ID (1 - 18)")
+                .with_param("beats", BlockType::Number, false, Some("0.25"), "Duration in beats")
+                .with_doc("Plays percussive drum hit for duration.")
+                .with_example("music.play_drum(1, 0.25)")
+        );
+
+        registry.register(
+            BlockDefinition::new("music.rest", BlockCategory::Audio, "Rest/pause music for specified beats", BlockType::Void, "AudioSystem::rest")
+                .with_param("beats", BlockType::Number, false, Some("0.25"), "Rest duration in beats")
+                .with_doc("Pauses music playback for number of beats.")
+                .with_example("music.rest(0.5)")
+        );
+
+        // === PEN EXTENSIONS ===
+
+        registry.register(
+            BlockDefinition::new("pen.change_size", BlockCategory::Pen, "Change pen line thickness by delta", BlockType::Void, "PenSystem::changeSize")
+                .with_param("delta", BlockType::Number, false, Some("1"), "Delta thickness")
+                .with_doc("Adjusts the pen line thickness.")
+                .with_example("pen.change_size(2)")
+        );
+
+        registry.register(
+            BlockDefinition::new("pen.change_color", BlockCategory::Pen, "Change pen color hue by delta", BlockType::Void, "PenSystem::changeColor")
+                .with_param("delta", BlockType::Number, false, Some("10"), "Hue delta value")
+                .with_doc("Increments pen color hue value.")
+                .with_example("pen.change_color(10)")
+        );
+
+        registry.register(
+            BlockDefinition::new("pen.set_shade", BlockCategory::Pen, "Set pen darkness/shade percentage", BlockType::Void, "PenSystem::setShade")
+                .with_param("shade", BlockType::Number, false, Some("50"), "Shade percentage (0 - 100)")
+                .with_doc("Sets pen darkness/brightness shade.")
+                .with_example("pen.set_shade(70)")
+        );
+
+        registry.register(
+            BlockDefinition::new("pen.change_shade", BlockCategory::Pen, "Change pen darkness/shade by delta", BlockType::Void, "PenSystem::changeShade")
+                .with_param("delta", BlockType::Number, false, Some("10"), "Delta shade")
+                .with_doc("Adjusts pen darkness/brightness shade.")
+                .with_example("pen.change_shade(-10)")
+        );
+
+        // === SENSING & SYSTEM REPORTERS ===
+
+        registry.register(
+            BlockDefinition::new("current_time", BlockCategory::Sensing, "Get current system time unit value", BlockType::Number, "SensingSystem::currentTime")
+                .with_param("unit", BlockType::String, false, Some("\"second\""), "Time unit (year, month, date, day_of_week, hour, minute, second)")
+                .with_doc("Queries current system calendar date or clock time.")
+                .with_example("hr = current_time(\"hour\")")
+        );
+
+        registry.register(
+            BlockDefinition::new("days_since_2000", BlockCategory::Sensing, "Days elapsed since January 1, 2000", BlockType::Number, "SensingSystem::daysSince2000")
+                .with_doc("Returns exact decimal days since Jan 1, 2000 00:00:00 UTC.")
+                .with_example("days = days_since_2000()")
+        );
+
+        registry.register(
+            BlockDefinition::new("get_username", BlockCategory::Sensing, "Get current player username", BlockType::String, "SensingSystem::getUsername")
+                .with_doc("Returns the username of the active player or environment.")
+                .with_example("name = get_username()")
+        );
+
         registry
     }
 
