@@ -38,7 +38,10 @@ impl Runtime {
         EventDispatcher::dispatch_start(&self.ir, &mut self.world, &self.registry);
     }
 
-    pub fn tick(&mut self, _dt: f32) {
+    pub fn tick(&mut self, dt: f32) {
+        // 0. Advance active movement tweens
+        MovementSystem::tick_tweens(&mut self.world, dt);
+
         // 1. Process Input events
         EventDispatcher::dispatch_inputs(&self.ir, &mut self.world, &self.registry);
 

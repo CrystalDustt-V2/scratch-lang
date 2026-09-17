@@ -24,6 +24,14 @@ impl Default for Transform2D {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum RotationStyle {
+    #[default]
+    AllAround,
+    LeftRight,
+    None,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Entity {
     pub id: EntityId,
@@ -35,6 +43,7 @@ pub struct Entity {
     pub size: [f32; 2],
     pub health: f64,
     pub velocity: (f32, f32),
+    pub rotation_style: RotationStyle,
 }
 
 impl Entity {
@@ -49,6 +58,7 @@ impl Entity {
             size: [40.0, 40.0],
             health: 3.0,
             velocity: (0.0, 0.0),
+            rotation_style: RotationStyle::default(),
         }
     }
 }

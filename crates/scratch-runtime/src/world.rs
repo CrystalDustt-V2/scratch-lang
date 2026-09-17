@@ -18,6 +18,7 @@ pub struct World {
     pub camera_pos: (f32, f32),
     pub camera_zoom: f32,
     pub pending_messages: Vec<String>,
+    pub active_tweens: Vec<crate::movement::GlideTween>,
 }
 
 impl Default for World {
@@ -43,6 +44,7 @@ impl World {
             camera_pos: (0.0, 0.0),
             camera_zoom: 1.0,
             pending_messages: Vec::new(),
+            active_tweens: Vec::new(),
         }
     }
 

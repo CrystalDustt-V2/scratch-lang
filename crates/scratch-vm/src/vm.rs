@@ -412,6 +412,29 @@ impl Vm {
                 }
                 Ok(None)
             }
+            "glide" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    let secs = args.get(1).and_then(|v| as_f64(v)).unwrap_or(1.0) as f32;
+                    let x = args.get(2).and_then(|v| as_f64(v)).unwrap_or(0.0) as f32;
+                    let y = args.get(3).and_then(|v| as_f64(v)).unwrap_or(0.0) as f32;
+                    MovementSystem::start_glide(world, target, secs, x, y);
+                }
+                Ok(None)
+            }
+            "go_to" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    let dest = args.get(1).and_then(|v| as_str(v)).unwrap_or("mouse");
+                    MovementSystem::execute_go_to(world, target, dest);
+                }
+                Ok(None)
+            }
+            "set_rotation_style" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    let style = args.get(1).and_then(|v| as_str(v)).unwrap_or("all-around");
+                    MovementSystem::execute_set_rotation_style(world, target, style);
+                }
+                Ok(None)
+            }
             "x_position" => {
                 let x = args
                     .first()

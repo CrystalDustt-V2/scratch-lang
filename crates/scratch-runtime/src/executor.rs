@@ -233,6 +233,26 @@ impl Executor {
                     }
                 }
             }
+            "glide" => {
+                if let Some(target) = args.first().and_then(|v| v.as_string()) {
+                    let secs = args.get(1).and_then(|v| v.as_number()).unwrap_or(1.0) as f32;
+                    let x = args.get(2).and_then(|v| v.as_number()).unwrap_or(0.0) as f32;
+                    let y = args.get(3).and_then(|v| v.as_number()).unwrap_or(0.0) as f32;
+                    MovementSystem::start_glide(world, target, secs, x, y);
+                }
+            }
+            "go_to" => {
+                if let Some(target) = args.first().and_then(|v| v.as_string()) {
+                    let dest = args.get(1).and_then(|v| v.as_string()).unwrap_or("mouse");
+                    MovementSystem::execute_go_to(world, target, dest);
+                }
+            }
+            "set_rotation_style" => {
+                if let Some(target) = args.first().and_then(|v| v.as_string()) {
+                    let style = args.get(1).and_then(|v| v.as_string()).unwrap_or("all-around");
+                    MovementSystem::execute_set_rotation_style(world, target, style);
+                }
+            }
             _ => {
                 // Other runtime blocks like sound.play
             }

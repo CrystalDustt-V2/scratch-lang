@@ -220,6 +220,37 @@ impl BlockRegistry {
                 .with_example("bounce_on_edge(Player)")
         );
 
+        // 23b. glide(target, seconds, x, y)
+        registry.register(
+            BlockDefinition::new("glide", BlockCategory::Movement, "Smoothly glide sprite to (x, y) over duration", BlockType::Void, "MovementSystem::glide")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("seconds", BlockType::Number, false, Some("1"), "Duration of glide in seconds")
+                .with_param("x", BlockType::Number, false, None, "Target X coordinate")
+                .with_param("y", BlockType::Number, false, None, "Target Y coordinate")
+                .with_doc("Smoothly animates the sprite's movement towards (x, y) over the specified time.")
+                .with_example("glide(Player, 1, 100, 200)")
+        );
+
+        // 23c. go_to(target, destination)
+        registry.register(
+            BlockDefinition::new("go_to", BlockCategory::Movement, "Move sprite directly to mouse, random position, or entity", BlockType::Void, "MovementSystem::goTo")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("destination", BlockType::String, false, Some("\"mouse\""), "Target destination ('mouse', 'random', or sprite name)")
+                .with_doc("Instantly relocates the target to mouse coordinates, random position, or another entity's position.")
+                .with_example("go_to(Player, \"mouse\")")
+                .with_example("go_to(Player, \"random\")")
+                .with_example("go_to(Player, \"Coin\")")
+        );
+
+        // 23d. set_rotation_style(target, style)
+        registry.register(
+            BlockDefinition::new("set_rotation_style", BlockCategory::Movement, "Set rotation style of sprite", BlockType::Void, "MovementSystem::setRotationStyle")
+                .with_param("target", BlockType::Object, false, None, "Target entity")
+                .with_param("style", BlockType::String, false, Some("\"all-around\""), "Rotation style ('all-around', 'left-right', or 'don't rotate')")
+                .with_doc("Controls how the sprite rotates: all-around (360°), left-right (horizontal flip), or don't rotate.")
+                .with_example("set_rotation_style(Player, \"left-right\")")
+        );
+
         // 24. distance_to(target, other) -> Number
         registry.register(
             BlockDefinition::new("distance_to", BlockCategory::Sensing, "Calculate Euclidean distance between two entities", BlockType::Number, "SensingSystem::distanceTo")

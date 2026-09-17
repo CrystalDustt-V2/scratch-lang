@@ -315,5 +315,53 @@ when message("game_over"):
         assert_eq!(runtime.world.get_var("status").unwrap().as_string(), Some("stopped"));
         assert_eq!(runtime.world.get_var("score").unwrap().as_number(), Some(100.0));
     }
+
+    #[test]
+    fn test_vm_smooth_motion_and_tweening() {
+        let code = r#"
+when start:
+    set_rotation_style(Player, "left-right")
+    go_to(Player, "Target")
+    glide(Player, 2, 200, 300)
+"#;
+        let ast = parse(code).expect("parse ok");
+        let reg = BlockRegistry::core();
+        let ir = lower_ast_to_ir(&ast, &reg).expect("ir ok");
+
+        let mut compiler = BytecodeCompiler::new();
+        let program = compiler.compile_program(&ir);
+
+        let mut runtime = VmRuntime::new(program, reg);
+        runtime.world.spawn_entity("Target");
+        if let Some(t) = runtime.world.get_entity_by_name_mut("Target") {
+            t.transform.x = 50.0;
+            t.transform.y = 100.0;
+        }
+
+        runtime.start().expect("start ok");
+
+        // Verify rotation style was set
+        let player = runtime.world.get_entity_by_name("Player").unwrap();
+        assert_eq!(player.rotation_style, scratch_runtime::entity::RotationStyle::LeftRight);
+
+        // Before glide ticks, player was moved to Target (50, 100) and glide started
+        assert_eq!(player.transform.x, 50.0);
+        assert_eq!(player.transform.y, 100.0);
+        assert_eq!(runtime.world.active_tweens.len(), 1);
+
+        // Tick 1.0 second (50% of 2.0s duration) -> 50 + (200 - 50)*0.5 = 125, 100 + (300 - 100)*0.5 = 200
+        runtime.tick(1.0).expect("tick 1s ok");
+        let player = runtime.world.get_entity_by_name("Player").unwrap();
+        assert!((player.transform.x - 125.0).abs() < 0.001);
+        assert!((player.transform.y - 200.0).abs() < 0.001);
+        assert_eq!(runtime.world.active_tweens.len(), 1);
+
+        // Tick another 1.0 second (100% complete) -> (200, 300) and tween removed
+        runtime.tick(1.0).expect("tick 2s ok");
+        let player = runtime.world.get_entity_by_name("Player").unwrap();
+        assert!((player.transform.x - 200.0).abs() < 0.001);
+        assert!((player.transform.y - 300.0).abs() < 0.001);
+        assert_eq!(runtime.world.active_tweens.len(), 0);
+    }
 }
 

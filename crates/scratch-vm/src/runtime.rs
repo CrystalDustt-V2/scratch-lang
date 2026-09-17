@@ -66,6 +66,9 @@ impl VmRuntime {
     }
 
     pub fn tick(&mut self, dt: f32) -> Result<(), VmError> {
+        // 0. Movement tweens
+        scratch_runtime::MovementSystem::tick_tweens(&mut self.world, dt);
+
         // 1. Inputs
         for event in &self.bytecode.events {
             match &event.trigger {
