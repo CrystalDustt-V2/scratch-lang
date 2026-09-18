@@ -99,7 +99,7 @@ export default function Home() {
   return (
     <div className="docs-app">
       <Head>
-        <title>scratch-lang Documentation &amp; API Reference</title>
+        <title>Scratch Language Docs</title>
         <meta
           name="description"
           content="Official documentation, standard library reference, language specification, and VS Code extension manual for scratch-lang (.sch)."

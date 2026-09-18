@@ -8,10 +8,10 @@ export default function Header({ activeTab, setActiveTab, onOpenSearch, darkMode
       <div className="docs-header-left">
         <a href="#top" onClick={() => setActiveTab('functions')} className="docs-brand-logo">
           <span className="docs-brand-cat">🐱</span>
-          <span className="docs-brand-name">scratch-lang</span>
+          <span className="docs-brand-name">Scratch Language</span>
           <span className="docs-brand-sub">docs</span>
         </a>
-        <span className="docs-version-pill">v0.1.0</span>
+        <span className="docs-version-pill">v1.0.0</span>
       </div>
 
       {/* Center Search Bar */}
