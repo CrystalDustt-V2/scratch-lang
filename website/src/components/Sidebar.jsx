@@ -1,64 +1,141 @@
-import React from 'react';
-import { 
-  Layers, Move, Eye, Volume2, Zap, GitBranch, Compass, 
-  Binary, Database, ListFilter, Code2, PenTool, Music, Mic, Languages, Gamepad2 
-} from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Search, ChevronDown, ChevronRight, Hash } from 'lucide-react';
 import { CATEGORIES } from '../data/categories';
 
-const ICON_MAP = {
-  Layers, Move, Eye, Volume2, Zap, GitBranch, Compass,
-  Binary, Database, ListFilter, Code2, PenTool, Music, Mic, Languages, Gamepad2
-};
+export default function Sidebar({
+  selectedCategory,
+  onSelectCategory,
+  functions,
+  onSelectFunction,
+  activeFunctionId,
+}) {
+  const [filterText, setFilterText] = useState('');
+  const [expandedCategories, setExpandedCategories] = useState({
+    motion: true,
+    looks: false,
+    sound: false,
+    events: false,
+    control: false,
+    sensing: false,
+    operators: false,
+    variables: false,
+    lists: false,
+  });
 
-export default function Sidebar({ selectedCategory, onSelectCategory, countsByCategory }) {
+  const toggleCategory = (catId) => {
+    setExpandedCategories((prev) => ({
+      ...prev,
+      [catId]: !prev[catId],
+    }));
+  };
+
+  // Group functions by category
+  const functionsByCategory = useMemo(() => {
+    const map = {};
+    functions.forEach((fn) => {
+      if (!map[fn.category]) {
+        map[fn.category] = [];
+      }
+      map[fn.category].push(fn);
+    });
+    return map;
+  }, [functions]);
+
+  // Filtered categories and functions
+  const filteredCategories = useMemo(() => {
+    const q = filterText.trim().toLowerCase();
+    if (!q) return CATEGORIES;
+
+    return CATEGORIES.filter((cat) => {
+      const matchCat = cat.name.toLowerCase().includes(q);
+      const catFns = functionsByCategory[cat.id] || [];
+      const matchFn = catFns.some(
+        (f) =>
+          f.name.toLowerCase().includes(q) ||
+          f.opcode.toLowerCase().includes(q) ||
+          f.syntax.toLowerCase().includes(q)
+      );
+      return matchCat || matchFn;
+    });
+  }, [filterText, functionsByCategory]);
+
   return (
-    <aside className="w-full lg:w-64 shrink-0">
-      <div className="sticky top-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-xs">
-        <div className="px-3 py-2 mb-1 flex items-center justify-between">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Categories</span>
-          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
-            147 Total
-          </span>
-        </div>
-
-        <nav className="space-y-0.5">
-          {CATEGORIES.map((cat) => {
-            const IconComponent = ICON_MAP[cat.icon] || Layers;
-            const isSelected = selectedCategory === cat.id;
-            const count = countsByCategory[cat.id] ?? cat.count;
-
-            return (
-              <button
-                key={cat.id}
-                onClick={() => onSelectCategory(cat.id)}
-                className={`w-full flex items-center justify-between px-3 py-2 text-xs font-medium rounded-lg transition-all text-left ${
-                  isSelected
-                    ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400 font-semibold'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <span
-                    className="w-2 h-2 rounded-full shrink-0"
-                    style={{ backgroundColor: cat.color }}
-                  />
-                  <IconComponent className="w-3.5 h-3.5 shrink-0 opacity-70" />
-                  <span className="truncate">{cat.name}</span>
-                </div>
-                <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
-                    isSelected
-                      ? 'bg-orange-500 text-white font-bold'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                  }`}
-                >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </nav>
+    <aside className="docs-sidebar">
+      {/* Quick Filter Input */}
+      <div className="docs-sidebar-filter">
+        <input
+          type="text"
+          value={filterText}
+          onChange={(e) => setFilterText(e.target.value)}
+          placeholder="Filter functions..."
+          className="docs-sidebar-input"
+          aria-label="Filter functions"
+        />
       </div>
+
+      <div className="docs-sidebar-section-title">
+        <span>Standard Library</span>
+        <span>{functions.length} API</span>
+      </div>
+
+      {/* Categories & Function Tree */}
+      <nav aria-label="API Directory">
+        {filteredCategories.map((cat) => {
+          const catFns = functionsByCategory[cat.id] || [];
+          const isSelected = selectedCategory === cat.id;
+          const isExpanded = filterText.trim().length > 0 || expandedCategories[cat.id] || isSelected;
+
+          const visibleFns = filterText.trim()
+            ? catFns.filter(
+                (f) =>
+                  f.name.toLowerCase().includes(filterText.toLowerCase()) ||
+                  f.opcode.toLowerCase().includes(filterText.toLowerCase())
+              )
+            : catFns;
+
+          return (
+            <div key={cat.id} className="docs-sidebar-cat-group">
+              <button
+                type="button"
+                onClick={() => {
+                  onSelectCategory(cat.id);
+                  toggleCategory(cat.id);
+                }}
+                className={`docs-sidebar-cat-header ${isSelected ? 'active' : ''}`}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                  {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  <span>{cat.name}</span>
+                </div>
+                <span className="docs-sidebar-cat-count">{catFns.length}</span>
+              </button>
+
+              {isExpanded && visibleFns.length > 0 && (
+                <ul className="docs-sidebar-fn-list">
+                  {visibleFns.map((fn) => {
+                    const isActiveFn = activeFunctionId === fn.id;
+                    return (
+                      <li key={fn.id} className="docs-sidebar-fn-item">
+                        <a
+                          href={`#${fn.id}`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            onSelectFunction(fn);
+                          }}
+                          className={`docs-sidebar-fn-link ${isActiveFn ? 'active' : ''}`}
+                          title={`${fn.syntax} (${fn.opcode})`}
+                        >
+                          {fn.name}()
+                        </a>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          );
+        })}
+      </nav>
     </aside>
   );
 }
