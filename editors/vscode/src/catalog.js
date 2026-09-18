@@ -19,6 +19,175 @@ const FUNCTIONS_DATA = [
     notes: 'If pen is down for this sprite, an automatic PenStroke trail is recorded into the world pen buffer.'
   },
   {
+    id: 'motion-move-up',
+    name: 'move_up',
+    category: 'motion',
+    shape: 'Stack',
+    opcode: 'motion_moveup',
+    syntax: 'move_up(target, [steps])',
+    returnType: 'Void',
+    description: 'Moves the sprite upward along the vertical Y-axis (+Y). Ideal for 2D top-down games.',
+    parameters: [
+      { name: 'target', type: 'String', description: 'Sprite entity name', required: true },
+      { name: 'steps', type: 'Number', description: 'Distance in pixels to move upward', required: false, default: '5' }
+    ],
+    example: 'when action.down("up"):\n    move_up("Player", 5)',
+    lspSnippet: 'move_up("${1:Player}", ${2:5})',
+    notes: 'Increases sprite Y coordinate. Default distance is 5 pixels.'
+  },
+  {
+    id: 'motion-up',
+    name: 'up',
+    category: 'motion',
+    shape: 'Stack',
+    opcode: 'motion_moveup_alias',
+    syntax: 'up(target, [steps])',
+    returnType: 'Void',
+    description: 'Convenience alias for move_up: Moves sprite upward along the vertical Y-axis (+Y).',
+    parameters: [
+      { name: 'target', type: 'String', description: 'Sprite entity name', required: true },
+      { name: 'steps', type: 'Number', description: 'Distance in pixels to move upward', required: false, default: '5' }
+    ],
+    example: 'when action.down("up"):\n    up("Player", 5)',
+    lspSnippet: 'up("${1:Player}", ${2:5})',
+    notes: 'Identical to move_up(target, steps).'
+  },
+  {
+    id: 'motion-move-down',
+    name: 'move_down',
+    category: 'motion',
+    shape: 'Stack',
+    opcode: 'motion_movedown',
+    syntax: 'move_down(target, [steps])',
+    returnType: 'Void',
+    description: 'Moves the sprite downward along the vertical Y-axis (-Y). Ideal for 2D top-down games.',
+    parameters: [
+      { name: 'target', type: 'String', description: 'Sprite entity name', required: true },
+      { name: 'steps', type: 'Number', description: 'Distance in pixels to move downward', required: false, default: '5' }
+    ],
+    example: 'when action.down("down"):\n    move_down("Player", 5)',
+    lspSnippet: 'move_down("${1:Player}", ${2:5})',
+    notes: 'Decreases sprite Y coordinate. Default distance is 5 pixels.'
+  },
+  {
+    id: 'motion-down',
+    name: 'down',
+    category: 'motion',
+    shape: 'Stack',
+    opcode: 'motion_movedown_alias',
+    syntax: 'down(target, [steps])',
+    returnType: 'Void',
+    description: 'Convenience alias for move_down: Moves sprite downward along the vertical Y-axis (-Y).',
+    parameters: [
+      { name: 'target', type: 'String', description: 'Sprite entity name', required: true },
+      { name: 'steps', type: 'Number', description: 'Distance in pixels to move downward', required: false, default: '5' }
+    ],
+    example: 'when action.down("down"):\n    down("Player", 5)',
+    lspSnippet: 'down("${1:Player}", ${2:5})',
+    notes: 'Identical to move_down(target, steps).'
+  },
+  {
+    id: 'motion-move-left',
+    name: 'move_left',
+    category: 'motion',
+    shape: 'Stack',
+    opcode: 'motion_moveleft',
+    syntax: 'move_left(target, [steps])',
+    returnType: 'Void',
+    description: 'Moves the sprite leftward along the horizontal X-axis (-X).',
+    parameters: [
+      { name: 'target', type: 'String', description: 'Sprite entity name', required: true },
+      { name: 'steps', type: 'Number', description: 'Distance in pixels to move leftward', required: false, default: '5' }
+    ],
+    example: 'when action.down("left"):\n    move_left("Player", 5)',
+    lspSnippet: 'move_left("${1:Player}", ${2:5})',
+    notes: 'Decreases sprite X coordinate. Default distance is 5 pixels.'
+  },
+  {
+    id: 'motion-left',
+    name: 'left',
+    category: 'motion',
+    shape: 'Stack',
+    opcode: 'motion_moveleft_alias',
+    syntax: 'left(target, [steps])',
+    returnType: 'Void',
+    description: 'Convenience alias for move_left: Moves sprite leftward along the horizontal X-axis (-X).',
+    parameters: [
+      { name: 'target', type: 'String', description: 'Sprite entity name', required: true },
+      { name: 'steps', type: 'Number', description: 'Distance in pixels to move leftward', required: false, default: '5' }
+    ],
+    example: 'when action.down("left"):\n    left("Player", 5)',
+    lspSnippet: 'left("${1:Player}", ${2:5})',
+    notes: 'Identical to move_left(target, steps).'
+  },
+  {
+    id: 'motion-move-right',
+    name: 'move_right',
+    category: 'motion',
+    shape: 'Stack',
+    opcode: 'motion_moveright',
+    syntax: 'move_right(target, [steps])',
+    returnType: 'Void',
+    description: 'Moves the sprite rightward along the horizontal X-axis (+X).',
+    parameters: [
+      { name: 'target', type: 'String', description: 'Sprite entity name', required: true },
+      { name: 'steps', type: 'Number', description: 'Distance in pixels to move rightward', required: false, default: '5' }
+    ],
+    example: 'when action.down("right"):\n    move_right("Player", 5)',
+    lspSnippet: 'move_right("${1:Player}", ${2:5})',
+    notes: 'Increases sprite X coordinate. Default distance is 5 pixels.'
+  },
+  {
+    id: 'motion-right',
+    name: 'right',
+    category: 'motion',
+    shape: 'Stack',
+    opcode: 'motion_moveright_alias',
+    syntax: 'right(target, [steps])',
+    returnType: 'Void',
+    description: 'Convenience alias for move_right: Moves sprite rightward along the horizontal X-axis (+X).',
+    parameters: [
+      { name: 'target', type: 'String', description: 'Sprite entity name', required: true },
+      { name: 'steps', type: 'Number', description: 'Distance in pixels to move rightward', required: false, default: '5' }
+    ],
+    example: 'when action.down("right"):\n    right("Player", 5)',
+    lspSnippet: 'right("${1:Player}", ${2:5})',
+    notes: 'Identical to move_right(target, steps).'
+  },
+  {
+    id: 'motion-jump',
+    name: 'jump',
+    category: 'motion',
+    shape: 'Stack',
+    opcode: 'motion_jump',
+    syntax: 'jump(target, [force])',
+    returnType: 'Void',
+    description: 'Applies an instantaneous upward jump impulse force to the target sprite (for platformers with gravity).',
+    parameters: [
+      { name: 'target', type: 'String', description: 'Sprite entity name', required: true },
+      { name: 'force', type: 'Number', description: 'Upward jump impulse magnitude', required: false, default: '10' }
+    ],
+    example: 'when action.press("jump"):\n    jump("Player", 12)',
+    lspSnippet: 'jump("${1:Player}", ${2:10})',
+    notes: 'Sets vertical velocity component for physics-enabled sprites.'
+  },
+  {
+    id: 'motion-stop',
+    name: 'stop',
+    category: 'motion',
+    shape: 'Stack',
+    opcode: 'motion_stop',
+    syntax: 'stop(target)',
+    returnType: 'Void',
+    description: 'Immediately halts sprite movement by resetting its velocity to zero.',
+    parameters: [
+      { name: 'target', type: 'String', description: 'Sprite entity name', required: true }
+    ],
+    example: 'when action.release("right"):\n    stop("Player")',
+    lspSnippet: 'stop("${1:Player}")',
+    notes: 'Resets velocity to (0, 0).'
+  },
+  {
     id: 'motion-turn-right',
     name: 'turn_right',
     category: 'motion',

@@ -14,6 +14,12 @@ mod tests {
     fn test_core_registry_contains_primitives() {
         let registry = BlockRegistry::core();
         assert!(registry.contains("move"));
+        assert!(registry.contains("move_up"));
+        assert!(registry.contains("move_down"));
+        assert!(registry.contains("move_left"));
+        assert!(registry.contains("move_right"));
+        assert!(registry.contains("up"));
+        assert!(registry.contains("down"));
         assert!(registry.contains("jump"));
         assert!(registry.contains("touching"));
         assert!(registry.contains("damage"));

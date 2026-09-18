@@ -235,6 +235,34 @@ impl Vm {
                 }
                 Ok(None)
             }
+            "move_up" | "up" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    let steps = args.get(1).and_then(|v| as_f64(v)).unwrap_or(5.0) as f32;
+                    MovementSystem::execute_move_up(world, target, steps);
+                }
+                Ok(None)
+            }
+            "move_down" | "down" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    let steps = args.get(1).and_then(|v| as_f64(v)).unwrap_or(5.0) as f32;
+                    MovementSystem::execute_move_down(world, target, steps);
+                }
+                Ok(None)
+            }
+            "move_left" | "left" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    let steps = args.get(1).and_then(|v| as_f64(v)).unwrap_or(5.0) as f32;
+                    MovementSystem::execute_move_left(world, target, steps);
+                }
+                Ok(None)
+            }
+            "move_right" | "right" => {
+                if let Some(target) = args.first().and_then(|v| as_str(v)) {
+                    let steps = args.get(1).and_then(|v| as_f64(v)).unwrap_or(5.0) as f32;
+                    MovementSystem::execute_move_right(world, target, steps);
+                }
+                Ok(None)
+            }
             "jump" => {
                 if let Some(target) = args.first().and_then(|v| as_str(v)) {
                     let force = args.get(1).and_then(|v| as_f64(v)).unwrap_or(10.0) as f32;

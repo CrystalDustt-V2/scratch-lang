@@ -29,6 +29,70 @@ impl BlockRegistry {
                 .with_example("move(Player, -5, 2)")
         );
 
+        // Directional Movement: move_up / up
+        registry.register(
+            BlockDefinition::new("move_up", BlockCategory::Movement, "Move an object upward along the Y axis", BlockType::Void, "MovementSystem::move_up")
+                .with_param("target", BlockType::Object, false, None, "Target object or group to move")
+                .with_param("steps", BlockType::Number, true, Some("5"), "Distance in pixels to move upward")
+                .with_doc("Moves the specified target object upwards on the Cartesian Y-axis (+Y). Default distance is 5 pixels.")
+                .with_example("move_up(\"Player\", 5)")
+        );
+        registry.register(
+            BlockDefinition::new("up", BlockCategory::Movement, "Alias for move_up: Move an object upward along the Y axis", BlockType::Void, "MovementSystem::move_up")
+                .with_param("target", BlockType::Object, false, None, "Target object or group to move")
+                .with_param("steps", BlockType::Number, true, Some("5"), "Distance in pixels to move upward")
+                .with_doc("Moves the specified target object upwards on the Cartesian Y-axis (+Y). Default distance is 5 pixels.")
+                .with_example("up(\"Player\", 5)")
+        );
+
+        // Directional Movement: move_down / down
+        registry.register(
+            BlockDefinition::new("move_down", BlockCategory::Movement, "Move an object downward along the Y axis", BlockType::Void, "MovementSystem::move_down")
+                .with_param("target", BlockType::Object, false, None, "Target object or group to move")
+                .with_param("steps", BlockType::Number, true, Some("5"), "Distance in pixels to move downward")
+                .with_doc("Moves the specified target object downwards on the Cartesian Y-axis (-Y). Default distance is 5 pixels.")
+                .with_example("move_down(\"Player\", 5)")
+        );
+        registry.register(
+            BlockDefinition::new("down", BlockCategory::Movement, "Alias for move_down: Move an object downward along the Y axis", BlockType::Void, "MovementSystem::move_down")
+                .with_param("target", BlockType::Object, false, None, "Target object or group to move")
+                .with_param("steps", BlockType::Number, true, Some("5"), "Distance in pixels to move downward")
+                .with_doc("Moves the specified target object downwards on the Cartesian Y-axis (-Y). Default distance is 5 pixels.")
+                .with_example("down(\"Player\", 5)")
+        );
+
+        // Directional Movement: move_left / left
+        registry.register(
+            BlockDefinition::new("move_left", BlockCategory::Movement, "Move an object leftward along the X axis", BlockType::Void, "MovementSystem::move_left")
+                .with_param("target", BlockType::Object, false, None, "Target object or group to move")
+                .with_param("steps", BlockType::Number, true, Some("5"), "Distance in pixels to move leftward")
+                .with_doc("Moves the specified target object leftwards on the Cartesian X-axis (-X). Default distance is 5 pixels.")
+                .with_example("move_left(\"Player\", 5)")
+        );
+        registry.register(
+            BlockDefinition::new("left", BlockCategory::Movement, "Alias for move_left: Move an object leftward along the X axis", BlockType::Void, "MovementSystem::move_left")
+                .with_param("target", BlockType::Object, false, None, "Target object or group to move")
+                .with_param("steps", BlockType::Number, true, Some("5"), "Distance in pixels to move leftward")
+                .with_doc("Moves the specified target object leftwards on the Cartesian X-axis (-X). Default distance is 5 pixels.")
+                .with_example("left(\"Player\", 5)")
+        );
+
+        // Directional Movement: move_right / right
+        registry.register(
+            BlockDefinition::new("move_right", BlockCategory::Movement, "Move an object rightward along the X axis", BlockType::Void, "MovementSystem::move_right")
+                .with_param("target", BlockType::Object, false, None, "Target object or group to move")
+                .with_param("steps", BlockType::Number, true, Some("5"), "Distance in pixels to move rightward")
+                .with_doc("Moves the specified target object rightwards on the Cartesian X-axis (+X). Default distance is 5 pixels.")
+                .with_example("move_right(\"Player\", 5)")
+        );
+        registry.register(
+            BlockDefinition::new("right", BlockCategory::Movement, "Alias for move_right: Move an object rightward along the X axis", BlockType::Void, "MovementSystem::move_right")
+                .with_param("target", BlockType::Object, false, None, "Target object or group to move")
+                .with_param("steps", BlockType::Number, true, Some("5"), "Distance in pixels to move rightward")
+                .with_doc("Moves the specified target object rightwards on the Cartesian X-axis (+X). Default distance is 5 pixels.")
+                .with_example("right(\"Player\", 5)")
+        );
+
         // 2. Movement: jump(target, force)
         registry.register(
             BlockDefinition::new("jump", BlockCategory::Movement, "Apply upward jump force to an object", BlockType::Void, "MovementSystem::jump")

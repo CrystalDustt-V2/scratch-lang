@@ -249,7 +249,9 @@ async function runTests() {
     console.log('   OK! All VS Code extension tests passed successfully!');
 }
 
-runTests().catch((e) => {
+runTests().then(() => {
+    process.exit(0);
+}).catch((e) => {
     console.error('Test Failed:', e);
     process.exit(1);
 });

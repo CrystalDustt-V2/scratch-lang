@@ -174,6 +174,30 @@ impl Executor {
                     MovementSystem::execute_move(world, target, dx, dy);
                 }
             }
+            "move_up" | "up" => {
+                if let Some(target) = args.first().and_then(|v| v.as_string()) {
+                    let steps = args.get(1).and_then(|v| v.as_number()).unwrap_or(5.0) as f32;
+                    MovementSystem::execute_move_up(world, target, steps);
+                }
+            }
+            "move_down" | "down" => {
+                if let Some(target) = args.first().and_then(|v| v.as_string()) {
+                    let steps = args.get(1).and_then(|v| v.as_number()).unwrap_or(5.0) as f32;
+                    MovementSystem::execute_move_down(world, target, steps);
+                }
+            }
+            "move_left" | "left" => {
+                if let Some(target) = args.first().and_then(|v| v.as_string()) {
+                    let steps = args.get(1).and_then(|v| v.as_number()).unwrap_or(5.0) as f32;
+                    MovementSystem::execute_move_left(world, target, steps);
+                }
+            }
+            "move_right" | "right" => {
+                if let Some(target) = args.first().and_then(|v| v.as_string()) {
+                    let steps = args.get(1).and_then(|v| v.as_number()).unwrap_or(5.0) as f32;
+                    MovementSystem::execute_move_right(world, target, steps);
+                }
+            }
             "jump" => {
                 if let Some(target) = args.first().and_then(|v| v.as_string()) {
                     let force = args.get(1).and_then(|v| v.as_number()).unwrap_or(10.0) as f32;

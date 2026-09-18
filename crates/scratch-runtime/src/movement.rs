@@ -39,6 +39,22 @@ impl MovementSystem {
         }
     }
 
+    pub fn execute_move_up(world: &mut World, target: &str, steps: f32) {
+        Self::execute_move(world, target, 0.0, steps);
+    }
+
+    pub fn execute_move_down(world: &mut World, target: &str, steps: f32) {
+        Self::execute_move(world, target, 0.0, -steps);
+    }
+
+    pub fn execute_move_left(world: &mut World, target: &str, steps: f32) {
+        Self::execute_move(world, target, -steps, 0.0);
+    }
+
+    pub fn execute_move_right(world: &mut World, target: &str, steps: f32) {
+        Self::execute_move(world, target, steps, 0.0);
+    }
+
     pub fn execute_jump(world: &mut World, target: &str, force: f32) {
         if let Some(entity) = world.get_entity_by_name_mut(target) {
             entity.velocity.1 = force;
@@ -174,6 +190,32 @@ impl MovementSystem {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_directional_movement() {
+        let mut world = World::new();
+        world.spawn_entity("Player");
+
+        MovementSystem::execute_move_up(&mut world, "Player", 15.0);
+        let p = world.get_entity_by_name("Player").unwrap();
+        assert_eq!(p.transform.x, 0.0);
+        assert_eq!(p.transform.y, 15.0);
+
+        MovementSystem::execute_move_down(&mut world, "Player", 5.0);
+        let p = world.get_entity_by_name("Player").unwrap();
+        assert_eq!(p.transform.x, 0.0);
+        assert_eq!(p.transform.y, 10.0);
+
+        MovementSystem::execute_move_right(&mut world, "Player", 20.0);
+        let p = world.get_entity_by_name("Player").unwrap();
+        assert_eq!(p.transform.x, 20.0);
+        assert_eq!(p.transform.y, 10.0);
+
+        MovementSystem::execute_move_left(&mut world, "Player", 8.0);
+        let p = world.get_entity_by_name("Player").unwrap();
+        assert_eq!(p.transform.x, 12.0);
+        assert_eq!(p.transform.y, 10.0);
+    }
 
     #[test]
     fn test_go_to_destinations() {
