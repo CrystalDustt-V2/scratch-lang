@@ -10,10 +10,49 @@ let lspProcess = null;
 let diagnosticCollection;
 /** @type {vscode.OutputChannel} */
 let outputChannel;
+/** @type {vscode.StatusBarItem} */
+let lspStatusBarItem;
+/** @type {vscode.StatusBarItem} */
+let searchStatusBarItem;
 
 let messageId = 1;
 const pendingRequests = new Map();
 let incomingBuffer = Buffer.alloc(0);
+let restartAttempts = 0;
+let restartTimer = null;
+let uptimeTimer = null;
+
+/**
+ * Returns a VS Code Codicon for a block category.
+ */
+function getCategoryIcon(category) {
+    switch ((category || '').toLowerCase()) {
+        case 'motion':
+            return '$(run)';
+        case 'looks':
+            return '$(eye)';
+        case 'sound':
+            return '$(unmute)';
+        case 'events':
+            return '$(zap)';
+        case 'control':
+            return '$(gear)';
+        case 'sensing':
+            return '$(radar)';
+        case 'operators':
+            return '$(symbol-operator)';
+        case 'variables':
+            return '$(variable)';
+        case 'lists':
+            return '$(list-unordered)';
+        case 'pen':
+            return '$(edit)';
+        case 'music':
+            return '$(music)';
+        default:
+            return '$(symbol-function)';
+    }
+}
 
 /**
  * Formats a Scratch block catalog entry into a rich Markdown hover tooltip.
@@ -118,14 +157,22 @@ function resolveScratchPath() {
 }
 
 /**
- * Writes an LSP JSON-RPC framed message to the server stdio.
+ * Writes an LSP JSON-RPC framed message to the server stdio with crash guards.
  */
 function sendJsonRpc(obj) {
-    if (!lspProcess || lspProcess.killed) return;
-    const jsonStr = JSON.stringify(obj);
-    const byteLen = Buffer.byteLength(jsonStr, 'utf8');
-    const header = `Content-Length: ${byteLen}\r\n\r\n`;
-    lspProcess.stdin.write(header + jsonStr, 'utf8');
+    if (!lspProcess || lspProcess.killed || lspProcess.exitCode !== null) return;
+    if (!lspProcess.stdin || !lspProcess.stdin.writable) return;
+
+    try {
+        const jsonStr = JSON.stringify(obj);
+        const byteLen = Buffer.byteLength(jsonStr, 'utf8');
+        const header = `Content-Length: ${byteLen}\r\n\r\n`;
+        lspProcess.stdin.write(header + jsonStr, 'utf8');
+    } catch (err) {
+        if (outputChannel) {
+            outputChannel.appendLine(`[LSP Send Error] ${err.message}`);
+        }
+    }
 }
 
 /**
@@ -133,7 +180,7 @@ function sendJsonRpc(obj) {
  */
 function sendRequest(method, params) {
     return new Promise((resolve, reject) => {
-        if (!lspProcess || lspProcess.killed) {
+        if (!lspProcess || lspProcess.killed || lspProcess.exitCode !== null) {
             return reject(new Error('LSP server is not running'));
         }
         const id = messageId++;
@@ -248,7 +295,27 @@ function handleLspMessage(msg) {
 }
 
 /**
- * Starts or restarts the LSP server daemon.
+ * Updates status bar indicators.
+ */
+function updateStatusBar(status) {
+    if (!lspStatusBarItem) return;
+    if (status === 'ready') {
+        lspStatusBarItem.text = '$(check) Scratch LSP: Ready';
+        lspStatusBarItem.tooltip = 'Scratch Language Server is running. Click to restart.';
+        lspStatusBarItem.backgroundColor = undefined;
+    } else if (status === 'initializing') {
+        lspStatusBarItem.text = '$(sync~spin) Scratch LSP: Initializing';
+        lspStatusBarItem.tooltip = 'Scratch Language Server is starting up...';
+        lspStatusBarItem.backgroundColor = undefined;
+    } else if (status === 'stopped') {
+        lspStatusBarItem.text = '$(warning) Scratch LSP: Offline';
+        lspStatusBarItem.tooltip = 'Scratch Language Server stopped. Click to restart.';
+        lspStatusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+    }
+}
+
+/**
+ * Starts or restarts the LSP server daemon with crash resilience and auto-restart.
  */
 function startLspServer() {
     stopLspServer();
@@ -256,16 +323,23 @@ function startLspServer() {
     const enabled = vscode.workspace.getConfiguration('scratch').get('lsp.enable');
     if (!enabled) {
         outputChannel.appendLine('[LSP] Disabled in user configuration.');
+        updateStatusBar('stopped');
         return;
     }
 
     const binPath = resolveScratchPath();
     outputChannel.appendLine(`[LSP] Launching Language Server: ${binPath} lsp --stdio`);
+    updateStatusBar('initializing');
 
     try {
         lspProcess = cp.spawn(binPath, ['lsp', '--stdio'], {
             stdio: ['pipe', 'pipe', 'pipe'],
             windowsHide: true,
+        });
+
+        // Crash-guard: prevent unhandled EPIPE on stdin
+        lspProcess.stdin.on('error', (err) => {
+            outputChannel.appendLine(`[LSP Stdin Error] ${err.message}`);
         });
 
         lspProcess.stdout.on('data', handleIncomingData);
@@ -274,11 +348,30 @@ function startLspServer() {
         });
 
         lspProcess.on('error', (err) => {
-            outputChannel.appendLine(`[LSP Error] Failed to start scratch process: ${err.message}`);
+            outputChannel.appendLine(`[LSP Error] Failed to spawn scratch binary: ${err.message}`);
+            updateStatusBar('stopped');
         });
 
-        lspProcess.on('exit', (code) => {
-            outputChannel.appendLine(`[LSP] Process exited with code ${code}`);
+        lspProcess.on('exit', (code, signal) => {
+            outputChannel.appendLine(`[LSP] Process exited with code ${code}, signal ${signal}`);
+            lspProcess = null;
+            updateStatusBar('stopped');
+
+            // Reject all pending requests
+            for (const [, req] of pendingRequests.entries()) {
+                req.reject(new Error('LSP server exited'));
+            }
+            pendingRequests.clear();
+
+            // Auto-restart with backoff (up to 3 consecutive attempts)
+            if (restartAttempts < 3) {
+                restartAttempts++;
+                const delay = restartAttempts * 1500;
+                outputChannel.appendLine(`[LSP] Scheduling auto-restart attempt ${restartAttempts}/3 in ${delay}ms...`);
+                restartTimer = setTimeout(() => {
+                    startLspServer();
+                }, delay);
+            }
         });
 
         // Initialize handshake
@@ -293,25 +386,44 @@ function startLspServer() {
                     documentSymbol: { hierarchicalDocumentSymbolSupport: true },
                 },
             },
-        }).then(() => {
-            sendNotification('initialized', {});
-            outputChannel.appendLine('[LSP] Initialized handshake successful.');
+        })
+            .then(() => {
+                sendNotification('initialized', {});
+                outputChannel.appendLine('[LSP] Initialized handshake successful.');
+                updateStatusBar('ready');
 
-            // Sync currently active scratch files
-            vscode.workspace.textDocuments.forEach((doc) => {
-                if (doc.languageId === 'scratch') {
-                    notifyDidOpen(doc);
-                }
+                // If server stays alive for 30 seconds, reset restart attempt counter
+                if (uptimeTimer) clearTimeout(uptimeTimer);
+                uptimeTimer = setTimeout(() => {
+                    restartAttempts = 0;
+                }, 30000);
+
+                // Sync currently active scratch files
+                vscode.workspace.textDocuments.forEach((doc) => {
+                    if (doc.languageId === 'scratch') {
+                        notifyDidOpen(doc);
+                    }
+                });
+            })
+            .catch((err) => {
+                outputChannel.appendLine(`[LSP Init Error] ${err.message}`);
+                updateStatusBar('stopped');
             });
-        }).catch((err) => {
-            outputChannel.appendLine(`[LSP Init Error] ${err.message}`);
-        });
     } catch (e) {
         outputChannel.appendLine(`[LSP Spawn Error] ${e.message}`);
+        updateStatusBar('stopped');
     }
 }
 
 function stopLspServer() {
+    if (restartTimer) {
+        clearTimeout(restartTimer);
+        restartTimer = null;
+    }
+    if (uptimeTimer) {
+        clearTimeout(uptimeTimer);
+        uptimeTimer = null;
+    }
     if (lspProcess) {
         try {
             lspProcess.kill();
@@ -320,6 +432,7 @@ function stopLspServer() {
     }
     incomingBuffer = Buffer.alloc(0);
     pendingRequests.clear();
+    updateStatusBar('stopped');
 }
 
 function notifyDidOpen(document) {
@@ -369,6 +482,20 @@ function activate(context) {
 
     outputChannel.appendLine('scratch-lang extension activated.');
 
+    // Status bar item for Quick Search
+    searchStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 101);
+    searchStatusBarItem.text = '$(search) Scratch Blocks';
+    searchStatusBarItem.tooltip = 'Search all 151 Scratch blocks and functions (Ctrl+Alt+S)';
+    searchStatusBarItem.command = 'scratch.searchFunctions';
+    searchStatusBarItem.show();
+    context.subscriptions.push(searchStatusBarItem);
+
+    // Status bar item for LSP status
+    lspStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+    lspStatusBarItem.command = 'scratch.restartServer';
+    lspStatusBarItem.show();
+    context.subscriptions.push(lspStatusBarItem);
+
     startLspServer();
 
     // Debounced didChange for responsive real-time linting without server saturation
@@ -394,12 +521,15 @@ function activate(context) {
             provideCompletionItems(document, position) {
                 const lineText = document.lineAt(position.line).text;
                 const prefix = lineText.slice(0, position.character);
-                const trimmed = prefix.trim();
+
+                // Accurate check if cursor is currently inside a string literal quote
+                const quoteCount = (prefix.match(/"/g) || []).length;
+                const isInsideQuotes = quoteCount % 2 === 1;
 
                 const items = [];
 
-                // 1. Inside string quotes context
-                if (prefix.includes('("') || prefix.endsWith('"')) {
+                // 1. String argument context completions
+                if (isInsideQuotes) {
                     if (
                         prefix.includes('action.') ||
                         prefix.includes('press') ||
@@ -415,32 +545,81 @@ function activate(context) {
                                 },
                                 vscode.CompletionItemKind.Value
                             );
-                            ci.detail = `Input Action: ${act}`;
-                            ci.documentation = new vscode.MarkdownString(`Physical keyboard key mapping for \`${act}\``);
+                            ci.detail = `Input Action: "${act}"`;
+                            ci.documentation = new vscode.MarkdownString(
+                                `Physical keyboard key mapping for \`${act}\``
+                            );
                             ci.insertText = act;
                             items.push(ci);
                         }
-                        return new vscode.CompletionList(items, false);
                     }
-                }
 
-                // 2. Event header suggestions (when line starts with 'when' or is empty)
-                if (trimmed === '' || trimmed === 'when' || trimmed === 'when ') {
-                    for (const ev of catalog.EVENTS_DATA) {
+                    if (prefix.includes('scene.') || prefix.includes('scene_switch')) {
+                        for (const sc of ['main', 'level1', 'level2', 'gameover', 'victory']) {
+                            const ci = new vscode.CompletionItem(
+                                {
+                                    label: sc,
+                                    detail: ' (scene name)',
+                                    description: 'scene',
+                                },
+                                vscode.CompletionItemKind.File
+                            );
+                            ci.detail = `Scene Target: "${sc}"`;
+                            ci.insertText = sc;
+                            items.push(ci);
+                        }
+                    }
+
+                    if (prefix.includes('sound') || prefix.includes('play')) {
+                        for (const snd of ['jump', 'coin', 'hit', 'laser', 'win', 'lose', 'step', 'powerup']) {
+                            const ci = new vscode.CompletionItem(
+                                {
+                                    label: snd,
+                                    detail: ' (sound effect)',
+                                    description: 'sound asset',
+                                },
+                                vscode.CompletionItemKind.File
+                            );
+                            ci.detail = `Audio Asset: "${snd}"`;
+                            ci.insertText = snd;
+                            items.push(ci);
+                        }
+                    }
+
+                    // Also allow general game objects inside quotes (e.g. move("Player", 10))
+                    for (const obj of catalog.KNOWN_OBJECTS) {
                         const ci = new vscode.CompletionItem(
                             {
-                                label: ev.label,
-                                detail: ` (${ev.name.replace('when ', '')})`,
-                                description: ev.detail || 'event',
+                                label: obj,
+                                detail: ' (Game Entity)',
+                                description: 'sprite target',
                             },
-                            vscode.CompletionItemKind.Event
+                            vscode.CompletionItemKind.Class
                         );
-                        ci.detail = `${ev.label} - ${ev.detail}`;
-                        ci.documentation = formatEventHover(ev);
-                        ci.insertText = new vscode.SnippetString(ev.snippet);
-                        ci.sortText = `0_${ev.name}`;
+                        ci.detail = `Target Sprite: "${obj}"`;
+                        ci.insertText = obj;
                         items.push(ci);
                     }
+
+                    return new vscode.CompletionList(items, false);
+                }
+
+                // 2. Event header suggestions (always available for easy searching)
+                for (const ev of catalog.EVENTS_DATA) {
+                    const ci = new vscode.CompletionItem(
+                        {
+                            label: ev.label,
+                            detail: ` (${ev.name.replace('when ', '')})`,
+                            description: ev.detail || 'event',
+                        },
+                        vscode.CompletionItemKind.Event
+                    );
+                    ci.detail = `${ev.label} - ${ev.detail}`;
+                    ci.documentation = formatEventHover(ev);
+                    ci.insertText = new vscode.SnippetString(ev.snippet);
+                    ci.filterText = `${ev.label} ${ev.name}`;
+                    ci.sortText = `0_${ev.name}`;
+                    items.push(ci);
                 }
 
                 // 3. All 151 Scratch 3.0 Standard Blocks & Functions
@@ -471,7 +650,9 @@ function activate(context) {
                     ci.detail = `${fn.syntax} : ${fn.returnType}`;
                     ci.documentation = formatFunctionHover(fn);
                     ci.insertText = new vscode.SnippetString(fn.lspSnippet);
-                    ci.filterText = fn.name;
+                    // Match both exact name, name without underscores, and opcode suffix
+                    const cleanOpcode = (fn.opcode || '').replace(/^[^_]+_/, '');
+                    ci.filterText = `${fn.name} ${fn.name.replace(/_/g, '')} ${cleanOpcode}`;
                     ci.sortText = `1_${fn.category}_${fn.name}`;
                     items.push(ci);
                 }
@@ -490,6 +671,7 @@ function activate(context) {
                     ci.detail = `${kw.syntax} (Keyword)`;
                     ci.documentation = formatKeywordHover(kw);
                     ci.insertText = new vscode.SnippetString(kw.snippet);
+                    ci.filterText = kw.name;
                     ci.sortText = `2_${kw.name}`;
                     items.push(ci);
                 }
@@ -507,6 +689,7 @@ function activate(context) {
                     ci.detail = `Game Object: ${obj}`;
                     ci.documentation = new vscode.MarkdownString(`Active scene entity \`${obj}\``);
                     ci.insertText = obj;
+                    ci.filterText = obj;
                     ci.sortText = `3_${obj}`;
                     items.push(ci);
                 }
@@ -533,6 +716,7 @@ function activate(context) {
                                 vscode.CompletionItemKind.Variable
                             );
                             ci.detail = 'User Variable';
+                            ci.filterText = varName;
                             ci.sortText = `4_${varName}`;
                             items.push(ci);
                         }
@@ -549,8 +733,6 @@ function activate(context) {
     // =========================================================================
     // 2. Instant Hover Documentation Provider (Resolves "Loading..." Freeze)
     // =========================================================================
-    // Immediately responds in 0ms from the in-memory catalog dictionary,
-    // with a strict 500ms race timeout guard for custom LSP symbol queries.
     context.subscriptions.push(
         vscode.languages.registerHoverProvider('scratch', {
             async provideHover(document, position) {
@@ -562,7 +744,7 @@ function activate(context) {
                 const fullToken = document.getText(range);
                 const baseWord = wordRange ? document.getText(wordRange) : fullToken;
 
-                // 1. Instant check in Function Catalog
+                // 1. Instant check in Function Catalog (0ms response)
                 if (catalog.FUNCTION_MAP.has(fullToken)) {
                     const fn = catalog.FUNCTION_MAP.get(fullToken);
                     return new vscode.Hover(formatFunctionHover(fn), range);
@@ -587,7 +769,7 @@ function activate(context) {
                 }
 
                 // 4. Fall back to background LSP server for custom symbols with a strict 500ms timeout
-                if (lspProcess && !lspProcess.killed) {
+                if (lspProcess && !lspProcess.killed && lspProcess.exitCode === null) {
                     try {
                         const res = await Promise.race([
                             sendRequest('textDocument/hover', {
@@ -615,7 +797,75 @@ function activate(context) {
     );
 
     // =========================================================================
-    // 3. Document Formatting Provider (Shift + Alt + F)
+    // 3. Live Parameter Signature Help Provider (Trigger on '(' and ',')
+    // =========================================================================
+    context.subscriptions.push(
+        vscode.languages.registerSignatureHelpProvider(
+            'scratch',
+            {
+                provideSignatureHelp(document, position) {
+                    const lineText = document.lineAt(position.line).text;
+                    const textBeforeCursor = lineText.slice(0, position.character);
+
+                    // Find opening paren of the innermost function call
+                    let openParenIndex = -1;
+                    let parenDepth = 0;
+                    let commaCount = 0;
+
+                    for (let i = textBeforeCursor.length - 1; i >= 0; i--) {
+                        const ch = textBeforeCursor[i];
+                        if (ch === ')') {
+                            parenDepth++;
+                        } else if (ch === '(') {
+                            if (parenDepth === 0) {
+                                openParenIndex = i;
+                                break;
+                            }
+                            parenDepth--;
+                        } else if (ch === ',' && parenDepth === 0) {
+                            commaCount++;
+                        }
+                    }
+
+                    if (openParenIndex === -1) return null;
+
+                    // Extract function identifier immediately preceding '('
+                    const beforeParen = textBeforeCursor.slice(0, openParenIndex).trim();
+                    const match = beforeParen.match(/([a-zA-Z_][a-zA-Z0-9_]*)$/);
+                    if (!match) return null;
+
+                    const funcName = match[1];
+                    const fn = catalog.FUNCTION_MAP.get(funcName);
+                    if (!fn) return null;
+
+                    const sigHelp = new vscode.SignatureHelp();
+                    const sigInfo = new vscode.SignatureInformation(
+                        `${fn.syntax} -> ${fn.returnType}`,
+                        new vscode.MarkdownString(fn.description)
+                    );
+
+                    sigInfo.parameters = (fn.parameters || []).map((p) => {
+                        const req = p.required ? 'required' : `optional, default: ${p.default}`;
+                        return new vscode.ParameterInformation(
+                            `${p.name}: ${p.type}`,
+                            new vscode.MarkdownString(`**${p.name}** (\`${p.type}\`) &mdash; ${p.description} *(${req})*`)
+                        );
+                    });
+
+                    sigHelp.signatures = [sigInfo];
+                    sigHelp.activeSignature = 0;
+                    sigHelp.activeParameter = Math.min(commaCount, (fn.parameters || []).length - 1);
+
+                    return sigHelp;
+                },
+            },
+            '(',
+            ','
+        )
+    );
+
+    // =========================================================================
+    // 4. Document Formatting Provider (Shift + Alt + F)
     // =========================================================================
     context.subscriptions.push(
         vscode.languages.registerDocumentFormattingEditProvider('scratch', {
@@ -653,7 +903,7 @@ function activate(context) {
     );
 
     // =========================================================================
-    // 4. Document Symbol Provider (Outline View)
+    // 5. Document Symbol Provider (Outline View)
     // =========================================================================
     context.subscriptions.push(
         vscode.languages.registerDocumentSymbolProvider('scratch', {
@@ -698,7 +948,7 @@ function activate(context) {
     );
 
     // =========================================================================
-    // 5. Commands Registration
+    // 6. Commands Registration
     // =========================================================================
     const runTerminalCommand = (cmdTitle, cmdStr) => {
         let terminal = vscode.window.terminals.find((t) => t.name === 'scratch');
@@ -729,21 +979,33 @@ function activate(context) {
         }),
         vscode.commands.registerCommand('scratch.searchFunctions', async () => {
             const editor = vscode.window.activeTextEditor;
-            const items = catalog.FUNCTIONS_DATA.map((fn) => ({
-                label: `$(symbol-function) ${fn.name}`,
-                description: `(${fn.parameters.map((p) => p.name).join(', ')})`,
-                detail: `[${fn.category.toUpperCase()}] ${fn.shape} • ${fn.description}`,
-                fn: fn,
-            }));
+            const items = catalog.FUNCTIONS_DATA.map((fn) => {
+                const icon = getCategoryIcon(fn.category);
+                const paramStr = (fn.parameters || []).map((p) => (p.required ? p.name : `[${p.name}]`)).join(', ');
+                return {
+                    label: `${icon} ${fn.name}`,
+                    description: `(${paramStr})`,
+                    detail: `[${fn.category.toUpperCase()}] ${fn.shape} • ${fn.description}`,
+                    fn: fn,
+                };
+            });
 
             const selected = await vscode.window.showQuickPick(items, {
-                placeHolder: 'Search all 151 Scratch blocks and functions by name, category, or description...',
+                placeHolder: '🔍 Search all 151 Scratch blocks and functions by name, category, or description...',
                 matchOnDescription: true,
                 matchOnDetail: true,
             });
 
-            if (selected && editor) {
-                editor.insertSnippet(new vscode.SnippetString(selected.fn.lspSnippet));
+            if (selected) {
+                if (editor) {
+                    editor.insertSnippet(new vscode.SnippetString(selected.fn.lspSnippet));
+                } else {
+                    // If no editor open, copy snippet to clipboard and notify
+                    await vscode.env.clipboard.writeText(selected.fn.lspSnippet);
+                    vscode.window.showInformationMessage(
+                        `Copied snippet for '${selected.fn.name}' to clipboard! (Open a .sch file to insert directly)`
+                    );
+                }
             }
         })
     );

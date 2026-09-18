@@ -30,6 +30,27 @@ impl Document {
     pub fn last_line_len(&self) -> usize {
         self.text.lines().last().map(|l| l.len()).unwrap_or(0)
     }
+
+    pub fn safe_prefix_at(&self, line_index: usize, char_offset: usize) -> &str {
+        let line = match self.get_line(line_index) {
+            Some(l) => l,
+            None => return "",
+        };
+        let mut byte_idx = 0;
+        let mut count = 0;
+        for (idx, ch) in line.char_indices() {
+            if count >= char_offset {
+                return &line[..idx];
+            }
+            byte_idx = idx + ch.len_utf8();
+            count += 1;
+        }
+        if count >= char_offset {
+            &line[..byte_idx]
+        } else {
+            line
+        }
+    }
 }
 
 pub struct Analyzer {
@@ -163,12 +184,7 @@ impl Analyzer {
     /// Computes autocompletion items based on current document and cursor position.
     pub fn compute_completions(&self, doc: &Document, pos: Position) -> Vec<CompletionItem> {
         let mut items = Vec::new();
-        let line_text = doc.get_line(pos.line as usize).unwrap_or("");
-        let prefix = if (pos.character as usize) <= line_text.len() {
-            &line_text[..pos.character as usize]
-        } else {
-            line_text
-        };
+        let prefix = doc.safe_prefix_at(pos.line as usize, pos.character as usize);
         let trimmed_prefix = prefix.trim_start();
 
         // 1. Inside string quotes context
@@ -514,30 +530,39 @@ fn extract_word_at_pos(line: &str, char_idx: usize) -> Option<&str> {
     if line.is_empty() {
         return None;
     }
-    let idx = char_idx.min(line.len().saturating_sub(1));
-    let bytes = line.as_bytes();
-
-    if !is_word_byte(bytes[idx]) && idx > 0 && is_word_byte(bytes[idx - 1]) {
-        return extract_word_around(line, idx - 1);
+    let chars: Vec<(usize, char)> = line.char_indices().collect();
+    if chars.is_empty() {
+        return None;
     }
-    if is_word_byte(bytes[idx]) {
-        return extract_word_around(line, idx);
-    }
-    None
-}
+    let is_word_char = |c: char| c.is_alphanumeric() || c == '_';
+    let target_idx = char_idx.min(chars.len().saturating_sub(1));
 
-fn extract_word_around(line: &str, idx: usize) -> Option<&str> {
-    let bytes = line.as_bytes();
-    let mut start = idx;
-    while start > 0 && is_word_byte(bytes[start - 1]) {
+    let chosen_idx = if is_word_char(chars[target_idx].1) {
+        target_idx
+    } else if target_idx > 0 && is_word_char(chars[target_idx - 1].1) {
+        target_idx - 1
+    } else {
+        return None;
+    };
+
+    let mut start = chosen_idx;
+    while start > 0 && is_word_char(chars[start - 1].1) {
         start -= 1;
     }
-    let mut end = idx;
-    while end < bytes.len() && is_word_byte(bytes[end]) {
+    let mut end = chosen_idx;
+    while end < chars.len() && is_word_char(chars[end].1) {
         end += 1;
     }
-    if start < end {
-        Some(&line[start..end])
+
+    let start_byte = chars[start].0;
+    let end_byte = if end < chars.len() {
+        chars[end].0
+    } else {
+        line.len()
+    };
+
+    if start_byte < end_byte {
+        Some(&line[start_byte..end_byte])
     } else {
         None
     }
@@ -547,35 +572,40 @@ fn extract_full_identifier_at_pos(line: &str, char_idx: usize) -> Option<String>
     if line.is_empty() {
         return None;
     }
-    let idx = char_idx.min(line.len().saturating_sub(1));
-    let bytes = line.as_bytes();
+    let chars: Vec<(usize, char)> = line.char_indices().collect();
+    if chars.is_empty() {
+        return None;
+    }
+    let is_id_char = |c: char| c.is_alphanumeric() || c == '_' || c == '.';
+    let target_idx = char_idx.min(chars.len().saturating_sub(1));
 
-    let is_id_char = |b: u8| is_word_byte(b) || b == b'.';
-
-    let target = if is_id_char(bytes[idx]) {
-        idx
-    } else if idx > 0 && is_id_char(bytes[idx - 1]) {
-        idx - 1
+    let chosen_idx = if is_id_char(chars[target_idx].1) {
+        target_idx
+    } else if target_idx > 0 && is_id_char(chars[target_idx - 1].1) {
+        target_idx - 1
     } else {
         return None;
     };
 
-    let mut start = target;
-    while start > 0 && is_id_char(bytes[start - 1]) {
+    let mut start = chosen_idx;
+    while start > 0 && is_id_char(chars[start - 1].1) {
         start -= 1;
     }
-    let mut end = target;
-    while end < bytes.len() && is_id_char(bytes[end]) {
+    let mut end = chosen_idx;
+    while end < chars.len() && is_id_char(chars[end].1) {
         end += 1;
     }
 
-    if start < end {
-        Some(line[start..end].to_string())
+    let start_byte = chars[start].0;
+    let end_byte = if end < chars.len() {
+        chars[end].0
+    } else {
+        line.len()
+    };
+
+    if start_byte < end_byte {
+        Some(line[start_byte..end_byte].to_string())
     } else {
         None
     }
-}
-
-fn is_word_byte(b: u8) -> bool {
-    b.is_ascii_alphanumeric() || b == b'_'
 }

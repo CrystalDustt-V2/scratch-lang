@@ -113,7 +113,11 @@ enum Commands {
     #[command(hide = true)]
     Studio { path: Option<PathBuf>, #[arg(short, long, default_value_t = 8080)] port: u16, #[arg(long)] no_open: bool },
     #[command(hide = true)]
-    Lsp,
+    Lsp {
+        /// Use stdio transport for LSP communication (default)
+        #[arg(long)]
+        stdio: bool,
+    },
     #[command(hide = true)]
     Export { #[command(subcommand)] target: ExportTarget },
 }
@@ -446,7 +450,7 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        Commands::Lsp => {
+        Commands::Lsp { .. } => {
             if let Err(e) = start_lsp() {
                 eprintln!("LSP server error: {}", e);
                 std::process::exit(1);

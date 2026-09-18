@@ -68,7 +68,21 @@ impl LspServer {
                 let parsed_id = serde_json::from_value::<Id>(id_val.clone()).ok();
                 match serde_json::from_value::<RequestMessage>(parsed) {
                     Ok(req) => {
-                        let resp = self.handle_request(req);
+                        let resp = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                            self.handle_request(req)
+                        })) {
+                            Ok(r) => r,
+                            Err(_) => ResponseMessage {
+                                jsonrpc: "2.0".to_string(),
+                                id: parsed_id,
+                                result: None,
+                                error: Some(ResponseError {
+                                    code: -32603,
+                                    message: "Internal server error: panic recovered".to_string(),
+                                    data: None,
+                                }),
+                            },
+                        };
                         write_message(&mut writer, &serde_json::to_string(&resp)?)?;
                     }
                     Err(e) => {
@@ -88,7 +102,10 @@ impl LspServer {
             } else {
                 // Notification
                 if let Ok(notif) = serde_json::from_value::<NotificationMessage>(parsed) {
-                    if let Some(outgoing_notifs) = self.handle_notification(notif) {
+                    let notif_res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        self.handle_notification(notif)
+                    }));
+                    if let Ok(Some(outgoing_notifs)) = notif_res {
                         for out in outgoing_notifs {
                             write_message(&mut writer, &serde_json::to_string(&out)?)?;
                         }

@@ -40,6 +40,26 @@ const mockVscode = {
             this.value = value;
         }
     },
+    SignatureHelp: class {
+        constructor() {
+            this.signatures = [];
+            this.activeSignature = 0;
+            this.activeParameter = 0;
+        }
+    },
+    SignatureInformation: class {
+        constructor(label, doc) {
+            this.label = label;
+            this.documentation = doc;
+            this.parameters = [];
+        }
+    },
+    ParameterInformation: class {
+        constructor(label, doc) {
+            this.label = label;
+            this.documentation = doc;
+        }
+    },
     CompletionItemKind: {
         Function: 2,
         Property: 9,
@@ -48,9 +68,20 @@ const mockVscode = {
         Variable: 5,
         Value: 11,
         Event: 22,
+        Operator: 24,
+        File: 17,
     },
     SymbolKind: {
         Event: 23,
+    },
+    StatusBarAlignment: {
+        Left: 1,
+        Right: 2,
+    },
+    ThemeColor: class {
+        constructor(id) {
+            this.id = id;
+        }
     },
     workspace: {
         getConfiguration: () => ({
@@ -64,9 +95,17 @@ const mockVscode = {
     },
     window: {
         createOutputChannel: () => ({ appendLine: () => {} }),
+        createStatusBarItem: (alignment, priority) => ({
+            text: '',
+            tooltip: '',
+            command: '',
+            show: () => {},
+            dispose: () => {},
+        }),
         terminals: [],
         showInformationMessage: () => {},
         showWarningMessage: () => {},
+        showQuickPick: async () => null,
     },
     languages: {
         createDiagnosticCollection: () => ({ set: () => {}, delete: () => {} }),
@@ -78,14 +117,27 @@ const mockVscode = {
             mockVscode._hoverProvider = provider;
             return { dispose: () => {} };
         },
+        registerSignatureHelpProvider: (lang, provider, ...triggers) => {
+            mockVscode._signatureHelpProvider = provider;
+            return { dispose: () => {} };
+        },
         registerDocumentFormattingEditProvider: () => ({ dispose: () => {} }),
         registerDocumentSymbolProvider: () => ({ dispose: () => {} }),
     },
     commands: {
-        registerCommand: () => ({ dispose: () => {} }),
+        registerCommand: (cmd, handler) => {
+            mockVscode._commands = mockVscode._commands || {};
+            mockVscode._commands[cmd] = handler;
+            return { dispose: () => {} };
+        },
     },
     Uri: {
         parse: (u) => ({ toString: () => u }),
+    },
+    env: {
+        clipboard: {
+            writeText: async () => {},
+        },
     },
 };
 
@@ -116,7 +168,9 @@ const context = { subscriptions: [] };
 ext.activate(context);
 assert(mockVscode._completionProvider, 'Completion provider must be registered');
 assert(mockVscode._hoverProvider, 'Hover provider must be registered');
-console.log('   OK! Extension activated and providers registered.');
+assert(mockVscode._signatureHelpProvider, 'Signature help provider must be registered');
+assert(mockVscode._commands['scratch.searchFunctions'], 'scratch.searchFunctions must be registered');
+console.log('   OK! Extension activated, providers and commands registered.');
 
 console.log('3. Testing Instant Hover Provider (0ms latency, no loading freeze)...');
 const mockDoc = {
@@ -132,8 +186,7 @@ async function runTests() {
     assert(hover, 'Hover must return a result');
     assert(hover.contents.value.includes('move(target, steps, [dy])'), 'Hover markdown must contain function signature');
     assert(hover.contents.value.includes('motion_movesteps'), 'Hover markdown must contain opcode');
-    console.log('   OK! Hover returned instant rich documentation for "move":');
-    console.log(hover.contents.value.split('\n').slice(0, 4).join('\n'));
+    console.log('   OK! Hover returned instant rich documentation for "move".');
 
     // Hover over keyword 'when'
     const mockDocWhen = {
@@ -176,7 +229,22 @@ async function runTests() {
     assert(scoreItem, 'Must contain local user variable "score"');
     console.log(`   OK! Completion provider returned ${compList.items.length} items with CompletionItemLabel formatting.`);
 
-    console.log('5. Deactivating...');
+    console.log('5. Testing Live Parameter Signature Help...');
+    const docSig = {
+        lineAt: () => ({ text: '    move("Player", ' }),
+    };
+    const sigHelp = mockVscode._signatureHelpProvider.provideSignatureHelp(docSig, { line: 0, character: 19 });
+    assert(sigHelp, 'Must return signature help for move');
+    assert.strictEqual(sigHelp.activeParameter, 1, 'Should highlight second parameter (steps)');
+    assert(sigHelp.signatures[0].parameters.length >= 2, 'Should have at least 2 parameters');
+    console.log('   OK! Signature help highlighted active parameter (steps).');
+
+    console.log('6. Testing Search Functions & Blocks Command...');
+    assert(typeof mockVscode._commands['scratch.searchFunctions'] === 'function');
+    await mockVscode._commands['scratch.searchFunctions']();
+    console.log('   OK! Search Functions command executed cleanly.');
+
+    console.log('7. Deactivating...');
     ext.deactivate();
     console.log('   OK! All VS Code extension tests passed successfully!');
 }

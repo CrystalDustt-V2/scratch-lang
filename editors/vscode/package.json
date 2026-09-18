@@ -103,6 +103,14 @@
         }
       ]
     },
+    "keybindings": [
+      {
+        "command": "scratch.searchFunctions",
+        "key": "ctrl+alt+s",
+        "mac": "cmd+alt+s",
+        "when": "editorTextFocus"
+      }
+    ],
     "configurationDefaults": {
       "[scratch]": {
         "editor.quickSuggestions": {
