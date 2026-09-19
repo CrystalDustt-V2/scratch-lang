@@ -54,9 +54,6 @@ jobs:
           - os: macos-latest
             arch: macos-arm64
             binary_name: scratch
-          - os: macos-13
-            arch: macos-x86_64
-            binary_name: scratch
 
     steps:
       - name: Checkout repository
