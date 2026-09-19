@@ -24,7 +24,7 @@ use config::CliConfig;
 #[derive(Parser)]
 #[command(name = "scratch")]
 #[command(about = "Command-line interface for Scratch", long_about = None)]
-#[command(version = "0.1.0")]
+#[command(version)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -523,7 +523,7 @@ fn create_new_project(
 
     // Create default scene
     let default_scene = SceneData::default();
-    default_scene.save_to_file(dest_path.join("scenes/main.scene"))?;
+    default_scene.save_to_file(dest_path.join("scenes/main.schscene"))?;
 
     // Populate starter code from chosen template
     let template_code = templates::get_template_code(template);

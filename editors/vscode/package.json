@@ -5,6 +5,10 @@
   "description": "Complete language support, real-time linting, formatting, IntelliSense completions, and LSP for scratch-lang (.sch)",
   "version": "1.0.0",
   "publisher": "CrystalDust",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CrystalDustt-V2/scratch-lang.git"
+  },
   "engines": {
     "vscode": "^1.75.0"
   },
@@ -30,7 +34,48 @@
         "extensions": [
           ".sch"
         ],
-        "configuration": "./language-configuration.json"
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./resources/cat-as-scratch.png",
+          "dark": "./resources/cat-as-scratch.png"
+        }
+      },
+      {
+        "id": "scratch-project",
+        "aliases": [
+          "Scratch Project",
+          "schproj"
+        ],
+        "extensions": [
+          ".schproj"
+        ],
+        "icon": {
+          "light": "./resources/schproj.png",
+          "dark": "./resources/schproj.png"
+        }
+      },
+      {
+        "id": "scratch-scene",
+        "aliases": [
+          "Scratch Scene",
+          "schscene",
+          "scene"
+        ],
+        "extensions": [
+          ".schscene",
+          ".scene"
+        ],
+        "icon": {
+          "light": "./resources/schscene.png",
+          "dark": "./resources/schscene.png"
+        }
+      }
+    ],
+    "iconThemes": [
+      {
+        "id": "scratch-icon-theme",
+        "label": "Scratch Language Icons",
+        "path": "./icons/scratch-icon-theme.json"
       }
     ],
     "grammars": [

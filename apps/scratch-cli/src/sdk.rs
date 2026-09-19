@@ -6,7 +6,7 @@ use scratch_runtime::Runtime;
 use std::path::PathBuf;
 
 pub fn print_version() {
-    println!("scratch-lang SDK v0.1.0");
+    println!("scratch-lang SDK v{}", env!("CARGO_PKG_VERSION"));
     println!("Compiler: Bytecode VM / Game IR");
     println!("Rust Edition: 2021 (rustc 1.85+)");
     println!("Platform: Windows x86_64");
@@ -24,14 +24,14 @@ pub fn print_info() {
     println!("============================================================");
     println!(" Scratch SDK Environment Information");
     println!("============================================================");
-    println!(" SDK Version:        0.1.0");
+    println!(" SDK Version:        {}", env!("CARGO_PKG_VERSION"));
     println!(" Workspace Architecture: 11 decoupled modular crates");
     println!(" Compiler:           scratch-bytecode (Stack-based Bytecode VM)");
     println!(" Intermediate Repr:  scratch-ir (Engine-independent Game IR)");
     println!(" Language Server:    scratch-lsp (JSON-RPC 2.0 stdio LSP)");
     println!(" Headless Runtime:   scratch-runtime (World, Entities, Events)");
     println!(" Native Runner:      scratch-native (Bevy 0.15 2D window & headless)");
-    println!(" Scene Engine:       scratch-scenes (YAML .scene multi-level data)");
+    println!(" Scene Engine:       scratch-scenes (YAML .schscene multi-level data)");
     println!(" Asset Pipeline:     scratch-assets (Sprite, sound, music indexing)");
     
     let registry = BlockRegistry::core();

@@ -14,6 +14,8 @@ pub struct ProjectConfig {
     pub background: String,
     #[serde(default = "default_ratio")]
     pub ratio: String,
+    #[serde(default = "default_version")]
+    pub version: String,
 }
 
 fn default_background() -> String {
@@ -22,6 +24,10 @@ fn default_background() -> String {
 
 fn default_ratio() -> String {
     "16:9".to_string()
+}
+
+fn default_version() -> String {
+    "1.0.0".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,6 +53,7 @@ impl Default for ProjectConfig {
             resolution: ResolutionConfig::default(),
             background: "white".to_string(),
             ratio: "16:9".to_string(),
+            version: "1.0.0".to_string(),
         }
     }
 }
@@ -99,6 +106,7 @@ mod tests {
         assert_eq!(config.resolution.width, 1280);
         assert_eq!(config.resolution.height, 720);
         assert_eq!(config.entry, "src/main.sch");
+        assert_eq!(config.version, "1.0.0");
     }
 
     #[test]

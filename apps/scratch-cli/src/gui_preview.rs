@@ -41,7 +41,11 @@ impl PreviewApp {
         };
 
         let mut scene_name = "Main".to_string();
-        let main_scene_path = proj_dir.join("scenes/main.scene");
+        let main_scene_path = if proj_dir.join("scenes/main.schscene").exists() {
+            proj_dir.join("scenes/main.schscene")
+        } else {
+            proj_dir.join("scenes/main.scene")
+        };
         if main_scene_path.exists() {
             if let Ok(scene) = SceneData::load_from_file(&main_scene_path) {
                 scene_name = scene.name.clone();

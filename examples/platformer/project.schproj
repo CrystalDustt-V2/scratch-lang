@@ -1,4 +1,5 @@
 name: Platformer Adventure
+version: 1.0.0
 entry: src/main.sch
 resolution:
   width: 1280

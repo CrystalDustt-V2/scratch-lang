@@ -1,0 +1,183 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name (e.g. v1.0.0)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      version: ${{ steps.tag.outputs.version }}
+    steps:
+      - name: Determine tag and version
+        id: tag
+        run: |
+          if [ -n "${{ github.event.inputs.tag_name }}" ]; then
+            TAG="${{ github.event.inputs.tag_name }}"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            TAG="v1.0.0"
+          fi
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building release for tag: $TAG (version: $VERSION)"
+
+  build-cli:
+    name: Build CLI (${{ matrix.arch }})
+    needs: [prepare]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            arch: windows-x86_64
+            binary_name: scratch.exe
+          - os: ubuntu-latest
+            arch: linux-x86_64
+            binary_name: scratch
+          - os: macos-latest
+            arch: macos-arm64
+            binary_name: scratch
+          - os: macos-13
+            arch: macos-x86_64
+            binary_name: scratch
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux GUI / Audio dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config \
+            libasound2-dev \
+            libudev-dev \
+            libx11-dev \
+            libxi-dev \
+            libgl1-mesa-dev \
+            libxcursor-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libwayland-dev \
+            libxkbcommon-dev
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.arch }}
+
+      - name: Build scratch-cli release
+        run: cargo build --release -p scratch-cli
+
+      - name: Package Windows Artifact
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $TAG = "${{ needs.prepare.outputs.tag }}"
+          New-Item -ItemType Directory -Force -Path staging, dist | Out-Null
+          Copy-Item target/release/scratch.exe staging/
+          Copy-Item README.md staging/
+          Copy-Item LICENSE staging/
+          Compress-Archive -Path staging/* -DestinationPath "dist/scratch-${TAG}-windows-x86_64.zip"
+
+      - name: Package Unix Artifact
+        if: runner.os != 'Windows'
+        run: |
+          TAG="${{ needs.prepare.outputs.tag }}"
+          ARCH="${{ matrix.arch }}"
+          mkdir -p staging dist
+          cp target/release/scratch staging/
+          cp README.md LICENSE staging/
+          tar -czvf "dist/scratch-${TAG}-${ARCH}.tar.gz" -C staging .
+
+      - name: Upload CLI Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
+
+  build-vsix:
+    name: Build VS Code Extension (VSIX)
+    needs: [prepare]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Package VS Code extension
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          cd editors/vscode
+          mkdir -p ../../dist
+          # Generate versioned VSIX package (scratch-lang-1.0.0.vsix)
+          npx --yes @vscode/vsce package --no-git-tag-version --out "../../dist/scratch-lang-${VERSION}.vsix"
+          # Copy standard name for generic automation
+          cp "../../dist/scratch-lang-${VERSION}.vsix" "../../dist/scratch-lang.vsix"
+
+      - name: Upload VSIX Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: dist/*
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish GitHub Release
+    needs: [prepare, build-cli, build-vsix]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Generate Checksums
+        run: |
+          cd release-assets
+          sha256sum * > SHA256SUMS.txt
+          echo "=== Release Artifacts & Checksums ==="
+          cat SHA256SUMS.txt
+
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: scratch-lang ${{ needs.prepare.outputs.tag }}
+          files: |
+            release-assets/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false

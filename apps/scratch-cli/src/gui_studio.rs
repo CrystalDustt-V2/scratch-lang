@@ -67,9 +67,13 @@ impl StudioApp {
             if let Ok(entries) = std::fs::read_dir(&scenes_folder) {
                 for entry in entries.flatten() {
                     let path = entry.path();
-                    if path.extension().and_then(|s| s.to_str()) == Some("scene") {
-                        if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
-                            available_scenes.push(stem.to_string());
+                    if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
+                        if ext == "schscene" || ext == "scene" {
+                            if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
+                                if !available_scenes.contains(&stem.to_string()) {
+                                    available_scenes.push(stem.to_string());
+                                }
+                            }
                         }
                     }
                 }
@@ -161,8 +165,13 @@ fn create_runtime(code: &str, proj_dir: &Path, scene_name: &str, registry: &Bloc
     });
     let mut runtime = Runtime::new(ir, registry.clone());
 
-    // Check scene file
-    let scene_path = proj_dir.join("scenes").join(format!("{}.scene", scene_name));
+    // Check scene file (.schscene or .scene)
+    let candidate = proj_dir.join("scenes").join(format!("{}.schscene", scene_name));
+    let scene_path = if candidate.exists() {
+        candidate
+    } else {
+        proj_dir.join("scenes").join(format!("{}.scene", scene_name))
+    };
     if scene_path.exists() {
         if let Ok(scene) = SceneData::load_from_file(&scene_path) {
             runtime.world.background = scene.background.clone();

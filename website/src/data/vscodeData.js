@@ -17,7 +17,7 @@ export const VSCODE_REFERENCE = {
   "name": "scratch-lang",
   "displayName": "scratch-lang",
   "description": "Language support, syntax highlighting, and LSP integration for scratch-lang (.sch)",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "publisher": "scratch-lang",
   "engines": {
     "vscode": "^1.75.0"

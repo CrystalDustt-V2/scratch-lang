@@ -60,7 +60,7 @@ Official language support, real-time linting, formatting, IntelliSense completio
 cd editors/vscode
 npx @vscode/vsce package
 ```
-This generates `scratch-lang-0.1.0.vsix`. You can install it with:
+This generates `scratch-lang-1.0.0.vsix`. You can install it with:
 ```bash
-code --install-extension scratch-lang-0.1.0.vsix
+code --install-extension scratch-lang-1.0.0.vsix
 ```

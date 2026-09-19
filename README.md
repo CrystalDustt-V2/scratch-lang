@@ -349,21 +349,23 @@ A scratch-lang project looks like this:
 
 ```
 my_game/
-├── project.yaml        # Project metadata (name, author, version, scenes)
+├── project.schproj     # Project metadata (name, author, version, scenes)
 ├── src/
 │   └── main.sch        # Main game script
+├── scenes/
+│   └── main.schscene   # Scene definitions
 └── assets/
     ├── sprites/        # Sprite images (.png, .svg)
     └── sounds/         # Sound files (.wav, .mp3)
 ```
 
-`project.yaml` example:
+`project.schproj` example:
 
 ```yaml
 name: my_game
 title: My Awesome Game
 author: YourName
-version: 0.1.0
+version: 1.0.0
 scenes:
   - menu
   - level1

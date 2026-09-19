@@ -44,7 +44,11 @@ impl SceneManager {
         // If not loaded in memory, try loading from scenes_dir
         if !self.scenes.contains_key(name) {
             if let Some(dir) = &self.scenes_dir {
-                let candidate = dir.join(format!("{}.scene", name));
+                let candidate = if dir.join(format!("{}.schscene", name)).exists() {
+                    dir.join(format!("{}.schscene", name))
+                } else {
+                    dir.join(format!("{}.scene", name))
+                };
                 if candidate.exists() {
                     let loaded = SceneData::load_from_file(&candidate)?;
                     self.scenes.insert(name.to_string(), loaded);

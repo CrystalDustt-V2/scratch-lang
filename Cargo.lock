@@ -5096,7 +5096,7 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
 name = "scratch-assets"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -5105,7 +5105,7 @@ dependencies = [
 
 [[package]]
 name = "scratch-blocks"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -5114,7 +5114,7 @@ dependencies = [
 
 [[package]]
 name = "scratch-bytecode"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "scratch-blocks",
  "scratch-ir",
@@ -5125,7 +5125,7 @@ dependencies = [
 
 [[package]]
 name = "scratch-cli"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "clap",
  "eframe",
@@ -5148,7 +5148,7 @@ dependencies = [
 
 [[package]]
 name = "scratch-ir"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "scratch-blocks",
  "scratch-language",
@@ -5158,7 +5158,7 @@ dependencies = [
 
 [[package]]
 name = "scratch-language"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "scratch-assets",
  "scratch-blocks",
@@ -5168,7 +5168,7 @@ dependencies = [
 
 [[package]]
 name = "scratch-lsp"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "scratch-assets",
  "scratch-blocks",
@@ -5181,7 +5181,7 @@ dependencies = [
 
 [[package]]
 name = "scratch-native"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "bevy",
  "scratch-blocks",
@@ -5194,7 +5194,7 @@ dependencies = [
 
 [[package]]
 name = "scratch-project"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "serde",
  "serde_yaml",
@@ -5203,7 +5203,7 @@ dependencies = [
 
 [[package]]
 name = "scratch-runtime"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "scratch-blocks",
  "scratch-ir",
@@ -5214,7 +5214,7 @@ dependencies = [
 
 [[package]]
 name = "scratch-scenes"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "scratch-runtime",
  "serde",
@@ -5225,7 +5225,7 @@ dependencies = [
 
 [[package]]
 name = "scratch-vm"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "scratch-blocks",
  "scratch-bytecode",

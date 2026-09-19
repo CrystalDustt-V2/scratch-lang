@@ -1,6 +1,9 @@
 name: Hello Game
+version: 1.0.0
 entry: src/main.sch
 resolution:
   width: 1280
   height: 720
+ratio: "16:9"
 background: white
+

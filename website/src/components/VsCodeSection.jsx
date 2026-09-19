@@ -99,7 +99,7 @@ export default function VsCodeSection() {
                 copyText(
                   `cd editors/vscode
 npx --yes @vscode/vsce package
-code --install-extension scratch-lang-0.1.0.vsix`,
+code --install-extension scratch-lang-1.0.0.vsix`,
                   'install-guide'
                 )
               }
@@ -116,7 +116,7 @@ cd editors/vscode
 npx --yes @vscode/vsce package
 
 # 2. Install directly into your VS Code editor
-code --install-extension scratch-lang-0.1.0.vsix`}</code>
+code --install-extension scratch-lang-1.0.0.vsix`}</code>
           </pre>
         </div>
 

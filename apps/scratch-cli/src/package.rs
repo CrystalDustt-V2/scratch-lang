@@ -50,7 +50,7 @@ pub fn pack_project(proj_path: &Path, out_file: Option<PathBuf>) -> Result<PathB
     let package = ScratchPackage {
         format: "scratch-package-v1".to_string(),
         name: proj_name,
-        version: "0.1.0".to_string(),
+        version: "1.0.0".to_string(),
         created_at: format!("{:?}", std::time::SystemTime::now()),
         entry: "src/main.sch".to_string(),
         files,

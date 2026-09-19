@@ -1,0 +1,33 @@
+name: level1
+background: forest
+objects:
+  - name: Player
+    x: 100.0
+    y: 100.0
+    size: [32.0, 32.0]
+    color: [0.2, 0.6, 1.0, 1.0]
+    tags: ["player"]
+  - name: Ground
+    x: 640.0
+    y: 32.0
+    size: [1280.0, 64.0]
+    color: [0.3, 0.7, 0.3, 1.0]
+    tags: ["solid"]
+  - name: Coin
+    x: 450.0
+    y: 120.0
+    size: [24.0, 24.0]
+    color: [1.0, 0.8, 0.0, 1.0]
+    tags: ["collectible"]
+  - name: Hazard
+    x: 650.0
+    y: 48.0
+    size: [32.0, 32.0]
+    color: [0.9, 0.2, 0.2, 1.0]
+    tags: ["hazard"]
+  - name: Goal
+    x: 1150.0
+    y: 120.0
+    size: [48.0, 64.0]
+    color: [0.8, 0.3, 0.8, 1.0]
+    tags: ["goal"]

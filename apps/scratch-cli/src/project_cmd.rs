@@ -267,10 +267,10 @@ pub fn add_scene(proj_path: &Path, scene_name: &str) -> Result<(), Box<dyn std::
     let scenes_dir = proj_dir.join("scenes");
     std::fs::create_dir_all(&scenes_dir)?;
 
-    let clean_name = if scene_name.ends_with(".scene") {
+    let clean_name = if scene_name.ends_with(".schscene") || scene_name.ends_with(".scene") {
         scene_name.to_string()
     } else {
-        format!("{}.scene", scene_name)
+        format!("{}.schscene", scene_name)
     };
 
     let scene_path = scenes_dir.join(&clean_name);
@@ -278,7 +278,7 @@ pub fn add_scene(proj_path: &Path, scene_name: &str) -> Result<(), Box<dyn std::
         return Err(format!("Scene file '{}' already exists", scene_path.display()).into());
     }
 
-    let scene_stem = clean_name.trim_end_matches(".scene");
+    let scene_stem = clean_name.trim_end_matches(".schscene").trim_end_matches(".scene");
     let mut scene_data = SceneData::default();
     scene_data.name = scene_stem.to_string();
     scene_data.background = "night".to_string();
