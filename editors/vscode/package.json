@@ -1,9 +1,10 @@
 {
   "name": "scratch-lang",
-  "displayName": "scratch-lang",
+  "displayName": "Scratch Language Support",
+  "icon": "./resources/cat-as-scratch.png",
   "description": "Complete language support, real-time linting, formatting, IntelliSense completions, and LSP for scratch-lang (.sch)",
-  "version": "0.1.0",
-  "publisher": "scratch-lang",
+  "version": "1.0.0",
+  "publisher": "CrystalDust",
   "engines": {
     "vscode": "^1.75.0"
   },

@@ -288,6 +288,19 @@ impl Vm {
                 let target_a = args.first().and_then(|v| as_str(v)).unwrap_or("");
                 let target_b = args.get(1).and_then(|v| as_str(v)).unwrap_or("");
 
+                if target_b.eq_ignore_ascii_case("edge") || target_b.eq_ignore_ascii_case("_edge_") {
+                    if let Some(a) = world.get_entity_by_name(target_a) {
+                        let (min_x, max_x, min_y, max_y) = world.get_stage_bounds();
+                        let half_w = a.size[0] / 2.0;
+                        let half_h = a.size[1] / 2.0;
+                        let touching = (a.transform.x - half_w <= min_x + 1.0)
+                            || (a.transform.x + half_w >= max_x - 1.0)
+                            || (a.transform.y - half_h <= min_y + 1.0)
+                            || (a.transform.y + half_h >= max_y - 1.0);
+                        return Ok(Some(BytecodeValue::Bool(touching && a.visible)));
+                    }
+                }
+
                 if let (Some(a), Some(b)) = (
                     world.get_entity_by_name(target_a),
                     world.get_entity_by_name(target_b),
@@ -367,36 +380,28 @@ impl Vm {
             "change_x" => {
                 if let Some(target) = args.first().and_then(|v| as_str(v)) {
                     let dx = args.get(1).and_then(|v| as_f64(v)).unwrap_or(0.0) as f32;
-                    if let Some(ent) = world.get_entity_by_name_mut(target) {
-                        ent.transform.x += dx;
-                    }
+                    MovementSystem::execute_change_x(world, target, dx);
                 }
                 Ok(None)
             }
             "set_x" => {
                 if let Some(target) = args.first().and_then(|v| as_str(v)) {
                     let x = args.get(1).and_then(|v| as_f64(v)).unwrap_or(0.0) as f32;
-                    if let Some(ent) = world.get_entity_by_name_mut(target) {
-                        ent.transform.x = x;
-                    }
+                    MovementSystem::execute_set_x(world, target, x);
                 }
                 Ok(None)
             }
             "change_y" => {
                 if let Some(target) = args.first().and_then(|v| as_str(v)) {
                     let dy = args.get(1).and_then(|v| as_f64(v)).unwrap_or(0.0) as f32;
-                    if let Some(ent) = world.get_entity_by_name_mut(target) {
-                        ent.transform.y += dy;
-                    }
+                    MovementSystem::execute_change_y(world, target, dy);
                 }
                 Ok(None)
             }
             "set_y" => {
                 if let Some(target) = args.first().and_then(|v| as_str(v)) {
                     let y = args.get(1).and_then(|v| as_f64(v)).unwrap_or(0.0) as f32;
-                    if let Some(ent) = world.get_entity_by_name_mut(target) {
-                        ent.transform.y = y;
-                    }
+                    MovementSystem::execute_set_y(world, target, y);
                 }
                 Ok(None)
             }
@@ -429,14 +434,7 @@ impl Vm {
             }
             "bounce_on_edge" => {
                 if let Some(target) = args.first().and_then(|v| as_str(v)) {
-                    if let Some(ent) = world.get_entity_by_name_mut(target) {
-                        if ent.transform.x <= 0.0 || ent.transform.x >= 1280.0 {
-                            ent.velocity.0 = -ent.velocity.0;
-                        }
-                        if ent.transform.y <= 0.0 || ent.transform.y >= 720.0 {
-                            ent.velocity.1 = -ent.velocity.1;
-                        }
-                    }
+                    MovementSystem::execute_bounce_on_edge(world, target);
                 }
                 Ok(None)
             }

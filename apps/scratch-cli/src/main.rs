@@ -782,6 +782,10 @@ r#"<!DOCTYPE html>
         if (keys["ArrowUp"] || keys["w"]) player.y -= 5;
         if (keys["ArrowDown"] || keys["s"]) player.y += 5;
 
+        // Clamp player within 16:9 canvas border
+        player.x = Math.max(16, Math.min(canvas.width - 16, player.x));
+        player.y = Math.max(16, Math.min(canvas.height - 16, player.y));
+
         for (let c of coins) {
             if (!c.collected && Math.hypot(player.x - c.x, player.y - c.y) < 32) {
                 c.collected = true;
@@ -792,7 +796,13 @@ r#"<!DOCTYPE html>
         ctx.fillStyle = "#1e222d";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+        // 16:9 Physical Stage Border
+        ctx.strokeStyle = "#3b82f6";
+        ctx.lineWidth = 4;
+        ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
+
         ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+        ctx.lineWidth = 1;
         for (let x = 0; x < canvas.width; x += 64) {
             ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
         }

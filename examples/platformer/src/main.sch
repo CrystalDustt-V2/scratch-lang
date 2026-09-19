@@ -9,6 +9,12 @@ when action.down("right"):
 when action.down("left"):
     move(Player, -6)
 
+when action.down("up"):
+    move_up(Player, 6)
+
+when action.down("down"):
+    move_down(Player, 6)
+
 when action.press("jump"):
     jump(Player, 14)
 

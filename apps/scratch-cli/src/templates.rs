@@ -11,6 +11,12 @@ when action.down("right"):
 when action.down("left"):
     move(Player, -5)
 
+when action.down("up"):
+    move_up(Player, 5)
+
+when action.down("down"):
+    move_down(Player, 5)
+
 when action.press("jump"):
     jump(Player, 12)
     sound.play("jump")
@@ -32,10 +38,10 @@ when action.down("left"):
     move(Player, -6)
 
 when action.down("up"):
-    change_y(Player, 6)
+    move_up(Player, 6)
 
 when action.down("down"):
-    change_y(Player, -6)
+    move_down(Player, 6)
 
 when Player touches Coin:
     score += 1
@@ -73,6 +79,12 @@ when action.down("right"):
 
 when action.down("left"):
     move(Player, -5)
+
+when action.down("up"):
+    move_up(Player, 5)
+
+when action.down("down"):
+    move_down(Player, 5)
 
 when action.press("jump"):
     jump(Player, 12)

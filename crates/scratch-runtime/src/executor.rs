@@ -216,6 +216,59 @@ impl Executor {
                     MovementSystem::execute_teleport(world, target, x, y);
                 }
             }
+            "change_x" => {
+                if let Some(target) = args.first().and_then(|v| v.as_string()) {
+                    let dx = args.get(1).and_then(|v| v.as_number()).unwrap_or(0.0) as f32;
+                    MovementSystem::execute_change_x(world, target, dx);
+                }
+            }
+            "change_y" => {
+                if let Some(target) = args.first().and_then(|v| v.as_string()) {
+                    let dy = args.get(1).and_then(|v| v.as_number()).unwrap_or(0.0) as f32;
+                    MovementSystem::execute_change_y(world, target, dy);
+                }
+            }
+            "set_x" => {
+                if let Some(target) = args.first().and_then(|v| v.as_string()) {
+                    let x = args.get(1).and_then(|v| v.as_number()).unwrap_or(0.0) as f32;
+                    MovementSystem::execute_set_x(world, target, x);
+                }
+            }
+            "set_y" => {
+                if let Some(target) = args.first().and_then(|v| v.as_string()) {
+                    let y = args.get(1).and_then(|v| v.as_number()).unwrap_or(0.0) as f32;
+                    MovementSystem::execute_set_y(world, target, y);
+                }
+            }
+            "turn_right" => {
+                if let Some(target) = args.first().and_then(|v| v.as_string()) {
+                    let deg = args.get(1).and_then(|v| v.as_number()).unwrap_or(15.0) as f32;
+                    if let Some(ent) = world.get_entity_by_name_mut(target) {
+                        ent.transform.rotation += deg;
+                    }
+                }
+            }
+            "turn_left" => {
+                if let Some(target) = args.first().and_then(|v| v.as_string()) {
+                    let deg = args.get(1).and_then(|v| v.as_number()).unwrap_or(15.0) as f32;
+                    if let Some(ent) = world.get_entity_by_name_mut(target) {
+                        ent.transform.rotation -= deg;
+                    }
+                }
+            }
+            "point_in_direction" => {
+                if let Some(target) = args.first().and_then(|v| v.as_string()) {
+                    let deg = args.get(1).and_then(|v| v.as_number()).unwrap_or(90.0) as f32;
+                    if let Some(ent) = world.get_entity_by_name_mut(target) {
+                        ent.transform.rotation = deg;
+                    }
+                }
+            }
+            "bounce_on_edge" => {
+                if let Some(target) = args.first().and_then(|v| v.as_string()) {
+                    MovementSystem::execute_bounce_on_edge(world, target);
+                }
+            }
             "camera.follow" => {
                 if let Some(target) = args.first().and_then(|v| v.as_string()) {
                     world.camera_follow_target = Some(target.to_string());
@@ -541,6 +594,19 @@ impl Executor {
                 let target_a = args.first().and_then(|v| v.as_string()).unwrap_or("");
                 let target_b = args.get(1).and_then(|v| v.as_string()).unwrap_or("");
 
+                if target_b.eq_ignore_ascii_case("edge") || target_b.eq_ignore_ascii_case("_edge_") {
+                    if let Some(a) = world.get_entity_by_name(target_a) {
+                        let (min_x, max_x, min_y, max_y) = world.get_stage_bounds();
+                        let half_w = a.size[0] / 2.0;
+                        let half_h = a.size[1] / 2.0;
+                        let touching = (a.transform.x - half_w <= min_x + 1.0)
+                            || (a.transform.x + half_w >= max_x - 1.0)
+                            || (a.transform.y - half_h <= min_y + 1.0)
+                            || (a.transform.y + half_h >= max_y - 1.0);
+                        return RuntimeValue::Bool(touching && a.visible);
+                    }
+                }
+
                 if let (Some(a), Some(b)) = (
                     world.get_entity_by_name(target_a),
                     world.get_entity_by_name(target_b),
@@ -555,6 +621,21 @@ impl Executor {
                     let overlap_y = (a.transform.y - b.transform.y).abs() <= (half_h_a + half_h_b);
 
                     RuntimeValue::Bool(overlap_x && overlap_y && a.visible && b.visible)
+                } else {
+                    RuntimeValue::Bool(false)
+                }
+            }
+            "is_touching_edge" | "touching_edge" => {
+                let target = args.first().and_then(|v| v.as_string()).unwrap_or("");
+                if let Some(a) = world.get_entity_by_name(target) {
+                    let (min_x, max_x, min_y, max_y) = world.get_stage_bounds();
+                    let half_w = a.size[0] / 2.0;
+                    let half_h = a.size[1] / 2.0;
+                    let touching = (a.transform.x - half_w <= min_x + 1.0)
+                        || (a.transform.x + half_w >= max_x - 1.0)
+                        || (a.transform.y - half_h <= min_y + 1.0)
+                        || (a.transform.y + half_h >= max_y - 1.0);
+                    RuntimeValue::Bool(touching && a.visible)
                 } else {
                     RuntimeValue::Bool(false)
                 }

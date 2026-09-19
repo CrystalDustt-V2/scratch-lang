@@ -58,28 +58,53 @@ impl StageRenderer {
         // Retain notifications from the last 2.5 seconds
         self.notifications.retain(|(_, time)| time.elapsed().as_secs_f32() < 2.5);
 
-        // Aspect ratio calculation (default 4:3 or project resolution)
+        // Aspect ratio calculation: enforce strict 16:9 (default 1280x720)
         let (target_w, target_h) = if config.resolution.width > 0 && config.resolution.height > 0 {
             (config.resolution.width as f32, config.resolution.height as f32)
         } else {
-            (800.0, 600.0)
+            (1280.0, 720.0)
         };
-        let aspect = target_w / target_h;
+        let aspect = 16.0 / 9.0;
+        runtime.world.stage_width = target_w;
+        runtime.world.stage_height = target_h;
 
         let mut stage_w = available_size.x.max(320.0);
         let mut stage_h = stage_w / aspect;
         if stage_h > available_size.y {
-            stage_h = available_size.y.max(240.0);
+            stage_h = available_size.y.max(180.0);
             stage_w = stage_h * aspect;
         }
 
-        let (response, painter) = ui.allocate_painter(egui::Vec2::new(stage_w, stage_h), egui::Sense::click_and_drag());
+        let (response, mut painter) = ui.allocate_painter(egui::Vec2::new(stage_w, stage_h), egui::Sense::click_and_drag());
         let stage_rect = response.rect;
 
         // Background color
         let bg_color = parse_background_color(&runtime.world.background);
-        painter.rect_filled(stage_rect, 8.0, bg_color);
-        painter.rect_stroke(stage_rect, 8.0, egui::Stroke::new(2.0, egui::Color32::from_rgb(60, 70, 90)), egui::StrokeKind::Outside);
+        painter.rect_filled(stage_rect, 6.0, bg_color);
+
+        // Physical 16:9 Game Border Frame with corner accents
+        let border_stroke = egui::Stroke::new(3.0, egui::Color32::from_rgb(59, 130, 246));
+        painter.rect_stroke(stage_rect, 6.0, border_stroke, egui::StrokeKind::Outside);
+
+        let accent_len = 18.0;
+        let accent_stroke = egui::Stroke::new(2.5, egui::Color32::from_rgb(147, 197, 253));
+        // Top-left
+        painter.line_segment([stage_rect.min, stage_rect.min + egui::vec2(accent_len, 0.0)], accent_stroke);
+        painter.line_segment([stage_rect.min, stage_rect.min + egui::vec2(0.0, accent_len)], accent_stroke);
+        // Top-right
+        let tr = egui::pos2(stage_rect.max.x, stage_rect.min.y);
+        painter.line_segment([tr, tr - egui::vec2(accent_len, 0.0)], accent_stroke);
+        painter.line_segment([tr, tr + egui::vec2(0.0, accent_len)], accent_stroke);
+        // Bottom-left
+        let bl = egui::pos2(stage_rect.min.x, stage_rect.max.y);
+        painter.line_segment([bl, bl + egui::vec2(accent_len, 0.0)], accent_stroke);
+        painter.line_segment([bl, bl - egui::vec2(0.0, accent_len)], accent_stroke);
+        // Bottom-right
+        painter.line_segment([stage_rect.max, stage_rect.max - egui::vec2(accent_len, 0.0)], accent_stroke);
+        painter.line_segment([stage_rect.max, stage_rect.max - egui::vec2(0.0, accent_len)], accent_stroke);
+
+        // Clip anything that exceeds the physical 16:9 stage boundary
+        painter.set_clip_rect(stage_rect);
 
         // Grid dots or subtle star particles for night
         if runtime.world.background == "night" {
@@ -91,9 +116,8 @@ impl StageRenderer {
         let scale_y = stage_rect.height() / target_h;
         let scale = scale_x.min(scale_y);
 
-        // Determine if coordinates are centered or top-left/bottom-left
-        let has_negative_coords = runtime.world.iter_entities().any(|e| e.transform.x < -10.0 || e.transform.y < -10.0);
-        let center_mode = has_negative_coords || (target_w <= 480.0 && target_h <= 360.0);
+        // Determine if coordinates are centered (Scratch standard) or corner-based
+        let center_mode = !runtime.world.is_corner_mode();
 
         let map_to_screen = |x: f32, y: f32| -> egui::Pos2 {
             if center_mode {
@@ -112,18 +136,29 @@ impl StageRenderer {
         // Handle Interactive Inputs
         if interactive {
             ui.input(|i| {
-                // Actions mapping
+                // Actions mapping: Up is decoupled from Jump so holding Up moves smoothly!
                 let right = i.key_down(egui::Key::ArrowRight) || i.key_down(egui::Key::D);
                 let left = i.key_down(egui::Key::ArrowLeft) || i.key_down(egui::Key::A);
                 let up = i.key_down(egui::Key::ArrowUp) || i.key_down(egui::Key::W);
                 let down = i.key_down(egui::Key::ArrowDown) || i.key_down(egui::Key::S);
-                let jump = i.key_down(egui::Key::Space) || up;
+                let jump = i.key_down(egui::Key::Space);
 
                 runtime.world.set_action_down("right", right);
                 runtime.world.set_action_down("left", left);
                 runtime.world.set_action_down("up", up);
                 runtime.world.set_action_down("down", down);
                 runtime.world.set_action_down("jump", jump);
+
+                // Specific key alias mappings for script authoring flexibility
+                runtime.world.set_action_down("w", i.key_down(egui::Key::W));
+                runtime.world.set_action_down("s", i.key_down(egui::Key::S));
+                runtime.world.set_action_down("a", i.key_down(egui::Key::A));
+                runtime.world.set_action_down("d", i.key_down(egui::Key::D));
+                runtime.world.set_action_down("ArrowUp", i.key_down(egui::Key::ArrowUp));
+                runtime.world.set_action_down("ArrowDown", i.key_down(egui::Key::ArrowDown));
+                runtime.world.set_action_down("ArrowLeft", i.key_down(egui::Key::ArrowLeft));
+                runtime.world.set_action_down("ArrowRight", i.key_down(egui::Key::ArrowRight));
+                runtime.world.set_action_down("space", jump);
 
                 // Mouse sensing
                 if let Some(pos) = i.pointer.hover_pos() {

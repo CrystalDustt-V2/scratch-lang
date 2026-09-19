@@ -24,14 +24,16 @@ impl MovementSystem {
                 entity.transform.x += dx;
                 entity.transform.y += dy;
             }
-            if world.pen_active_sprites.contains(target) && (dx != 0.0 || dy != 0.0) {
+            world.clamp_entity_to_stage(target);
+            let (new_x, new_y) = world.get_entity_by_name(target).map(|e| (e.transform.x, e.transform.y)).unwrap_or((px + dx, py + dy));
+            if world.pen_active_sprites.contains(target) && (px != new_x || py != new_y) {
                 let color = world.pen_color;
                 let size = world.pen_size;
                 world.add_pen_stroke(crate::world::PenStroke {
                     x1: px,
                     y1: py,
-                    x2: px + dx,
-                    y2: py + dy,
+                    x2: new_x,
+                    y2: new_y,
                     color,
                     size,
                 });
@@ -55,11 +57,30 @@ impl MovementSystem {
         Self::execute_move(world, target, steps, 0.0);
     }
 
+    pub fn execute_change_x(world: &mut World, target: &str, dx: f32) {
+        Self::execute_move(world, target, dx, 0.0);
+    }
+
+    pub fn execute_change_y(world: &mut World, target: &str, dy: f32) {
+        Self::execute_move(world, target, 0.0, dy);
+    }
+
+    pub fn execute_set_x(world: &mut World, target: &str, x: f32) {
+        let cur_y = world.get_entity_by_name(target).map(|e| e.transform.y).unwrap_or(0.0);
+        Self::execute_teleport(world, target, x, cur_y);
+    }
+
+    pub fn execute_set_y(world: &mut World, target: &str, y: f32) {
+        let cur_x = world.get_entity_by_name(target).map(|e| e.transform.x).unwrap_or(0.0);
+        Self::execute_teleport(world, target, cur_x, y);
+    }
+
     pub fn execute_jump(world: &mut World, target: &str, force: f32) {
         if let Some(entity) = world.get_entity_by_name_mut(target) {
             entity.velocity.1 = force;
             entity.transform.y += force;
         }
+        world.clamp_entity_to_stage(target);
     }
 
     pub fn execute_stop(world: &mut World, target: &str) {
@@ -75,14 +96,16 @@ impl MovementSystem {
                 entity.transform.x = x;
                 entity.transform.y = y;
             }
-            if world.pen_active_sprites.contains(target) && (px != x || py != y) {
+            world.clamp_entity_to_stage(target);
+            let (new_x, new_y) = world.get_entity_by_name(target).map(|e| (e.transform.x, e.transform.y)).unwrap_or((x, y));
+            if world.pen_active_sprites.contains(target) && (px != new_x || py != new_y) {
                 let color = world.pen_color;
                 let size = world.pen_size;
                 world.add_pen_stroke(crate::world::PenStroke {
                     x1: px,
                     y1: py,
-                    x2: x,
-                    y2: y,
+                    x2: new_x,
+                    y2: new_y,
                     color,
                     size,
                 });
@@ -119,6 +142,7 @@ impl MovementSystem {
                 ent.transform.x = cur_x;
                 ent.transform.y = cur_y;
             }
+            world.clamp_entity_to_stage(&tween.target);
             if progress < 1.0 {
                 remaining.push(tween);
             }
@@ -138,8 +162,9 @@ impl MovementSystem {
                 let next_x = (seed * 1103515245.0 + 12345.0) % 2147483648.0;
                 let next_y = (next_x * 1103515245.0 + 12345.0) % 2147483648.0;
                 world.set_var("__random_seed", RuntimeValue::Number(next_y));
-                let rx = 50.0 + (next_x / 2147483648.0) as f32 * (1280.0 - 100.0);
-                let ry = 50.0 + (next_y / 2147483648.0) as f32 * (720.0 - 100.0);
+                let (min_x, max_x, min_y, max_y) = world.get_stage_bounds();
+                let rx = min_x + 50.0 + (next_x / 2147483648.0) as f32 * (max_x - min_x - 100.0);
+                let ry = min_y + 50.0 + (next_y / 2147483648.0) as f32 * (max_y - min_y - 100.0);
                 Some((rx, ry))
             }
             _ => world
@@ -158,15 +183,17 @@ impl MovementSystem {
                 ent.transform.x = x;
                 ent.transform.y = y;
             }
+            world.clamp_entity_to_stage(target);
+            let (new_x, new_y) = world.get_entity_by_name(target).map(|e| (e.transform.x, e.transform.y)).unwrap_or((x, y));
             if let Some((px, py)) = prev {
-                if world.pen_active_sprites.contains(target) && (px != x || py != y) {
+                if world.pen_active_sprites.contains(target) && (px != new_x || py != new_y) {
                     let color = world.pen_color;
                     let size = world.pen_size;
                     world.add_pen_stroke(crate::world::PenStroke {
                         x1: px,
                         y1: py,
-                        x2: x,
-                        y2: y,
+                        x2: new_x,
+                        y2: new_y,
                         color,
                         size,
                     });
@@ -183,6 +210,30 @@ impl MovementSystem {
         };
         if let Some(ent) = world.get_entity_by_name_mut(target) {
             ent.rotation_style = style;
+        }
+    }
+
+    pub fn execute_bounce_on_edge(world: &mut World, target: &str) {
+        let (min_x, max_x, min_y, max_y) = world.get_stage_bounds();
+        if let Some(ent) = world.get_entity_by_name_mut(target) {
+            let half_w = (ent.size[0] * ent.transform.scale_x.abs() / 2.0).max(1.0);
+            let half_h = (ent.size[1] * ent.transform.scale_y.abs() / 2.0).max(1.0);
+
+            if ent.transform.x - half_w <= min_x {
+                ent.transform.x = min_x + half_w;
+                ent.velocity.0 = ent.velocity.0.abs().max(1.0);
+            } else if ent.transform.x + half_w >= max_x {
+                ent.transform.x = max_x - half_w;
+                ent.velocity.0 = -ent.velocity.0.abs().max(1.0);
+            }
+
+            if ent.transform.y - half_h <= min_y {
+                ent.transform.y = min_y + half_h;
+                ent.velocity.1 = ent.velocity.1.abs().max(1.0);
+            } else if ent.transform.y + half_h >= max_y {
+                ent.transform.y = max_y - half_h;
+                ent.velocity.1 = -ent.velocity.1.abs().max(1.0);
+            }
         }
     }
 }
@@ -285,4 +336,45 @@ mod tests {
         assert!((p.transform.y - 200.0).abs() < 0.001);
         assert_eq!(world.active_tweens.len(), 0);
     }
+
+    #[test]
+    fn test_stage_boundary_clamping() {
+        let mut world = World::new();
+        world.spawn_entity("Player");
+        // Center mode bounds: [-640, 640] x [-360, 360], size 40x40 -> half 20
+        // Max X is 640 - 20 = 620
+        MovementSystem::execute_move_right(&mut world, "Player", 1000.0);
+        let p = world.get_entity_by_name("Player").unwrap();
+        assert_eq!(p.transform.x, 620.0);
+
+        // Min X is -640 + 20 = -620
+        MovementSystem::execute_move_left(&mut world, "Player", 2000.0);
+        let p = world.get_entity_by_name("Player").unwrap();
+        assert_eq!(p.transform.x, -620.0);
+
+        // Max Y is 360 - 20 = 340
+        MovementSystem::execute_move_up(&mut world, "Player", 1000.0);
+        let p = world.get_entity_by_name("Player").unwrap();
+        assert_eq!(p.transform.y, 340.0);
+
+        // Min Y is -360 + 20 = -340
+        MovementSystem::execute_move_down(&mut world, "Player", 2000.0);
+        let p = world.get_entity_by_name("Player").unwrap();
+        assert_eq!(p.transform.y, -340.0);
+    }
+
+    #[test]
+    fn test_bounce_on_edge() {
+        let mut world = World::new();
+        world.spawn_entity("Player");
+        if let Some(p) = world.get_entity_by_name_mut("Player") {
+            p.transform.x = 630.0; // right edge
+            p.velocity = (10.0, 5.0);
+        }
+        MovementSystem::execute_bounce_on_edge(&mut world, "Player");
+        let p = world.get_entity_by_name("Player").unwrap();
+        assert!(p.velocity.0 < 0.0, "Velocity X should be inverted to bounce left");
+        assert_eq!(p.transform.x, 620.0);
+    }
 }
+

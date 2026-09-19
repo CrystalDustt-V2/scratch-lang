@@ -75,6 +75,7 @@ impl SceneManager {
         world.camera_pos = (scene.camera.x, scene.camera.y);
         world.camera_zoom = scene.camera.zoom;
         world.camera_follow_target = scene.camera.follow.clone();
+        world.is_corner_origin = scene.objects.iter().any(|obj| obj.x > 640.0 || obj.y > 360.0);
 
         for obj in &scene.objects {
             if let Some(ent) = world.get_entity_by_name_mut(&obj.name) {

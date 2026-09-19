@@ -22,8 +22,8 @@ mod bevy_adapter {
 
     pub fn run_bevy(runtime: Runtime, config: &ProjectConfig) {
         let title = config.name.clone();
-        let width = config.resolution.width as f32;
-        let height = config.resolution.height as f32;
+        let width = if config.resolution.width > 0 { config.resolution.width as f32 } else { 1280.0 };
+        let height = if config.resolution.height > 0 { config.resolution.height as f32 } else { 720.0 };
 
         let mut app = App::new();
 
@@ -50,8 +50,17 @@ mod bevy_adapter {
     }
 
     fn setup_scene(mut commands: Commands, mut res: ResMut<RuntimeResource>) {
-        // Spawn 2D Camera
-        commands.spawn(Camera2d);
+        // Spawn 2D Camera centered on scene
+        if res.runtime.world.is_corner_mode() {
+            let cx = res.runtime.world.stage_width / 2.0;
+            let cy = res.runtime.world.stage_height / 2.0;
+            commands.spawn((
+                Camera2d,
+                Transform::from_xyz(cx, cy, 0.0),
+            ));
+        } else {
+            commands.spawn(Camera2d);
+        }
 
         // Run OnStart events in runtime
         res.runtime.start();
@@ -63,18 +72,28 @@ mod bevy_adapter {
     ) {
         let world = &mut res.runtime.world;
 
-        // Map keyboard keys to logical actions
+        // Map keyboard keys to logical actions (Up decoupled from Jump)
         let right = keyboard.pressed(KeyCode::KeyD) || keyboard.pressed(KeyCode::ArrowRight);
         let left = keyboard.pressed(KeyCode::KeyA) || keyboard.pressed(KeyCode::ArrowLeft);
         let up = keyboard.pressed(KeyCode::KeyW) || keyboard.pressed(KeyCode::ArrowUp);
         let down = keyboard.pressed(KeyCode::KeyS) || keyboard.pressed(KeyCode::ArrowDown);
-        let jump = keyboard.pressed(KeyCode::Space) || keyboard.pressed(KeyCode::KeyW);
+        let jump = keyboard.pressed(KeyCode::Space);
 
         world.set_action_down("right", right);
         world.set_action_down("left", left);
         world.set_action_down("up", up);
         world.set_action_down("down", down);
         world.set_action_down("jump", jump);
+
+        world.set_action_down("w", keyboard.pressed(KeyCode::KeyW));
+        world.set_action_down("s", keyboard.pressed(KeyCode::KeyS));
+        world.set_action_down("a", keyboard.pressed(KeyCode::KeyA));
+        world.set_action_down("d", keyboard.pressed(KeyCode::KeyD));
+        world.set_action_down("ArrowUp", keyboard.pressed(KeyCode::ArrowUp));
+        world.set_action_down("ArrowDown", keyboard.pressed(KeyCode::ArrowDown));
+        world.set_action_down("ArrowLeft", keyboard.pressed(KeyCode::ArrowLeft));
+        world.set_action_down("ArrowRight", keyboard.pressed(KeyCode::ArrowRight));
+        world.set_action_down("space", jump);
     }
 
     fn tick_runtime(time: Res<Time>, mut res: ResMut<RuntimeResource>) {

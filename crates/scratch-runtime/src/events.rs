@@ -48,6 +48,22 @@ impl EventDispatcher {
     pub fn dispatch_collisions(ir: &IrProgram, world: &mut World, registry: &BlockRegistry) {
         for handler in &ir.events {
             if let IrTrigger::OnTouches { object_a, object_b } = &handler.trigger {
+                if object_b.eq_ignore_ascii_case("edge") || object_b.eq_ignore_ascii_case("_edge_") {
+                    if let Some(a) = world.get_entity_by_name(object_a) {
+                        let (min_x, max_x, min_y, max_y) = world.get_stage_bounds();
+                        let half_w = a.size[0] / 2.0;
+                        let half_h = a.size[1] / 2.0;
+                        let touching = (a.transform.x - half_w <= min_x + 1.0)
+                            || (a.transform.x + half_w >= max_x - 1.0)
+                            || (a.transform.y - half_h <= min_y + 1.0)
+                            || (a.transform.y + half_h >= max_y - 1.0);
+                        if touching && a.visible {
+                            Executor::execute_instructions(&handler.instructions, world, registry);
+                        }
+                    }
+                    continue;
+                }
+
                 if let (Some(a), Some(b)) = (
                     world.get_entity_by_name(object_a),
                     world.get_entity_by_name(object_b),

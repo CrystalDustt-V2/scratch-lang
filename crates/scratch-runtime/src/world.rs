@@ -68,6 +68,9 @@ pub struct World {
     pub tts_voice: String,
     pub tts_language: String,
     pub tts_speech_queue: Vec<String>,
+    pub stage_width: f32,
+    pub stage_height: f32,
+    pub is_corner_origin: bool,
 }
 
 impl Default for World {
@@ -114,6 +117,47 @@ impl World {
             tts_voice: "alto".to_string(),
             tts_language: "en".to_string(),
             tts_speech_queue: Vec::new(),
+            stage_width: 1280.0,
+            stage_height: 720.0,
+            is_corner_origin: false,
+        }
+    }
+
+    pub fn is_corner_mode(&self) -> bool {
+        self.is_corner_origin
+            || self.iter_entities().any(|e| {
+                e.name != "Player"
+                    && (e.transform.x > (self.stage_width / 2.0) + 20.0
+                        || e.transform.y > (self.stage_height / 2.0) + 20.0)
+            })
+    }
+
+    pub fn get_stage_bounds(&self) -> (f32, f32, f32, f32) {
+        if self.is_corner_mode() {
+            (0.0, self.stage_width, 0.0, self.stage_height)
+        } else {
+            (
+                -self.stage_width / 2.0,
+                self.stage_width / 2.0,
+                -self.stage_height / 2.0,
+                self.stage_height / 2.0,
+            )
+        }
+    }
+
+    pub fn clamp_entity_to_stage(&mut self, target: &str) {
+        let (min_x, max_x, min_y, max_y) = self.get_stage_bounds();
+        if let Some(ent) = self.get_entity_by_name_mut(target) {
+            let half_w = (ent.size[0] * ent.transform.scale_x.abs() / 2.0).max(1.0);
+            let half_h = (ent.size[1] * ent.transform.scale_y.abs() / 2.0).max(1.0);
+
+            // Only clamp if the entity fits within the stage (don't clamp background/ground platforms)
+            if (min_x + half_w) <= (max_x - half_w) {
+                ent.transform.x = ent.transform.x.clamp(min_x + half_w, max_x - half_w);
+            }
+            if (min_y + half_h) <= (max_y - half_h) {
+                ent.transform.y = ent.transform.y.clamp(min_y + half_h, max_y - half_h);
+            }
         }
     }
 

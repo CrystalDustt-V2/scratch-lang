@@ -45,6 +45,9 @@ impl PreviewApp {
             if let Ok(scene) = SceneData::load_from_file(&main_scene_path) {
                 scene_name = scene.name.clone();
                 runtime.world.background = scene.background.clone();
+                if scene.objects.iter().any(|obj| obj.x > 640.0 || obj.y > 360.0) {
+                    runtime.world.is_corner_origin = true;
+                }
                 for obj in scene.objects {
                     if let Some(ent) = runtime.world.get_entity_by_name_mut(&obj.name) {
                         ent.transform.x = obj.x;
@@ -162,7 +165,7 @@ impl eframe::App for PreviewApp {
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.label(
-                        egui::RichText::new("⌨ [A/D/←/→] Move  [Space/W/↑] Jump  [Mouse] Aim & Click")
+                        egui::RichText::new("⌨ [W/A/S/D/Arrows] Move  [Space] Jump  [Mouse] Aim & Click")
                             .size(11.0)
                             .color(egui::Color32::from_rgb(148, 163, 184)),
                     );
@@ -227,8 +230,8 @@ pub fn run_preview_native(path: &Path) -> Result<(), Box<dyn std::error::Error>>
     let window_title = format!("Scratch Live Preview - {}", config.name);
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([1000.0, 720.0])
-            .with_min_inner_size([640.0, 480.0])
+            .with_inner_size([1280.0, 764.0])
+            .with_min_inner_size([640.0, 400.0])
             .with_title(window_title),
         ..Default::default()
     };
@@ -236,8 +239,8 @@ pub fn run_preview_native(path: &Path) -> Result<(), Box<dyn std::error::Error>>
     println!("============================================================");
     println!(" Scratch Live Native Popup Preview Running!");
     println!(" Project:  {}", config.name);
-    println!(" Window:   Native Rust Desktop Window (1000x720)");
-    println!(" Controls: Arrow Keys / WASD, Space (Jump), Mouse Click");
+    println!(" Window:   Native Rust Desktop Window (1280x764, 16:9 Stage)");
+    println!(" Controls: Arrow Keys / WASD (Move 4-Way), Space (Jump), Mouse Click");
     println!(" Close the window or press Alt+F4 to exit.");
     println!("============================================================");
 
