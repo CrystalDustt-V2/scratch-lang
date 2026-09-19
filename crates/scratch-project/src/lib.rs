@@ -1,3 +1,6 @@
+pub mod ratio;
+pub use ratio::*;
+
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -9,10 +12,16 @@ pub struct ProjectConfig {
     pub resolution: ResolutionConfig,
     #[serde(default = "default_background")]
     pub background: String,
+    #[serde(default = "default_ratio")]
+    pub ratio: String,
 }
 
 fn default_background() -> String {
     "white".to_string()
+}
+
+fn default_ratio() -> String {
+    "16:9".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,6 +46,7 @@ impl Default for ProjectConfig {
             entry: "src/main.sch".to_string(),
             resolution: ResolutionConfig::default(),
             background: "white".to_string(),
+            ratio: "16:9".to_string(),
         }
     }
 }
@@ -54,6 +64,13 @@ pub enum ProjectError {
 }
 
 impl ProjectConfig {
+    pub fn apply_ratio_preset(&mut self, preset: AspectRatioPreset) {
+        let (w, h) = preset.to_resolution();
+        self.resolution.width = w;
+        self.resolution.height = h;
+        self.ratio = preset.short_label();
+    }
+
     pub fn load_from_file(path: impl AsRef<Path>) -> Result<Self, ProjectError> {
         let path = path.as_ref();
         if !path.exists() {

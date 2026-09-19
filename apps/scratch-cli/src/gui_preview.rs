@@ -2,7 +2,7 @@ use eframe::egui;
 use scratch_blocks::BlockRegistry;
 use scratch_ir::lower_ast_to_ir;
 use scratch_language::parse;
-use scratch_project::ProjectConfig;
+use scratch_project::{AspectRatioPreset, ProjectConfig};
 use scratch_runtime::{Runtime, RuntimeValue};
 use scratch_scenes::SceneData;
 use std::path::{Path, PathBuf};
@@ -14,6 +14,7 @@ use crate::stage_view::StageRenderer;
 pub struct PreviewApp {
     pub runtime: Runtime,
     pub config: ProjectConfig,
+    pub selected_ratio: AspectRatioPreset,
     pub stage_renderer: StageRenderer,
     pub paused: bool,
     pub last_tick: Instant,
@@ -69,9 +70,13 @@ impl PreviewApp {
 
         runtime.start();
 
+        let selected_ratio = AspectRatioPreset::parse_str(&config.ratio)
+            .unwrap_or(AspectRatioPreset::Ratio16x9);
+
         Ok(Self {
             runtime,
             config,
+            selected_ratio,
             stage_renderer: StageRenderer::new(),
             paused: false,
             last_tick: Instant::now(),
@@ -85,7 +90,8 @@ impl PreviewApp {
     }
 
     pub fn restart(&mut self) {
-        if let Ok(new_app) = Self::new(self.source_path.clone(), self.original_code.clone(), self.config.clone()) {
+        if let Ok(mut new_app) = Self::new(self.source_path.clone(), self.original_code.clone(), self.config.clone()) {
+            new_app.selected_ratio = self.selected_ratio;
             self.runtime = new_app.runtime;
             self.paused = false;
             self.last_tick = Instant::now();
@@ -163,6 +169,37 @@ impl eframe::App for PreviewApp {
                 // Scene badge
                 ui.label(egui::RichText::new(format!("🎬 Scene: {}", self.scene_name)).color(egui::Color32::from_rgb(192, 132, 252)));
 
+                ui.separator();
+
+                // Live Aspect Ratio Selector (16:9, 4:3, Device)
+                let mut changed_ratio = None;
+                egui::ComboBox::from_id_salt("preview_ratio_picker")
+                    .selected_text(format!("📐 {}", self.selected_ratio.short_label()))
+                    .show_ui(ui, |ui| {
+                        for preset in [
+                            AspectRatioPreset::Ratio16x9,
+                            AspectRatioPreset::Ratio4x3,
+                            AspectRatioPreset::Device,
+                        ] {
+                            let is_selected = self.selected_ratio == preset;
+                            if ui.selectable_label(is_selected, preset.label()).clicked() {
+                                changed_ratio = Some(preset);
+                            }
+                        }
+                    });
+
+                if let Some(preset) = changed_ratio {
+                    self.selected_ratio = preset;
+                    self.config.apply_ratio_preset(preset);
+                    let (w, h) = preset.to_resolution();
+                    self.runtime.world.stage_width = w as f32;
+                    self.runtime.world.stage_height = h as f32;
+                    let entity_names: Vec<String> = self.runtime.world.iter_entities().map(|e| e.name.clone()).collect();
+                    for name in entity_names {
+                        self.runtime.world.clamp_entity_to_stage(&name);
+                    }
+                }
+
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.label(
                         egui::RichText::new("⌨ [W/A/S/D/Arrows] Move  [Space] Jump  [Mouse] Aim & Click")
@@ -179,6 +216,8 @@ impl eframe::App for PreviewApp {
             ui.add_space(2.0);
             ui.horizontal(|ui| {
                 ui.label(egui::RichText::new(format!("🎮 {}", self.config.name)).strong().color(egui::Color32::WHITE));
+                ui.separator();
+                ui.label(egui::RichText::new(format!("Ratio: {}", self.config.ratio)).size(11.0).color(egui::Color32::from_rgb(56, 189, 248)));
                 ui.separator();
                 ui.label(egui::RichText::new(format!("Entities: {}", self.runtime.world.iter_entities().count())).size(11.0).color(egui::Color32::from_rgb(203, 213, 225)));
                 ui.separator();
@@ -219,18 +258,29 @@ impl eframe::App for PreviewApp {
     }
 }
 
-pub fn run_preview_native(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let (entry_path, config) = project_cmd::resolve_entry_file(path)?;
+pub fn run_preview_native(path: &Path, ratio_override: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
+    let (entry_path, mut config) = project_cmd::resolve_entry_file(path)?;
+    if let Some(r) = ratio_override {
+        if let Some(preset) = AspectRatioPreset::parse_str(r) {
+            config.apply_ratio_preset(preset);
+        } else {
+            eprintln!("Warning: Unrecognized ratio override '{}'. Using project default.", r);
+        }
+    }
+
     println!("Loading scratch-lang native popup app preview for '{}'...", config.name);
     println!("Source: {}", entry_path.display());
+    println!("Ratio:  {} ({}x{})", config.ratio, config.resolution.width, config.resolution.height);
 
     let source = std::fs::read_to_string(&entry_path)?;
     let app = PreviewApp::new(entry_path.clone(), source, config.clone())?;
 
     let window_title = format!("Scratch Live Preview - {}", config.name);
+    let win_w = (config.resolution.width as f32).min(1920.0).max(800.0);
+    let win_h = (config.resolution.height as f32 + 64.0).min(1080.0).max(500.0);
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([1280.0, 764.0])
+            .with_inner_size([win_w, win_h])
             .with_min_inner_size([640.0, 400.0])
             .with_title(window_title),
         ..Default::default()
@@ -239,7 +289,7 @@ pub fn run_preview_native(path: &Path) -> Result<(), Box<dyn std::error::Error>>
     println!("============================================================");
     println!(" Scratch Live Native Popup Preview Running!");
     println!(" Project:  {}", config.name);
-    println!(" Window:   Native Rust Desktop Window (1280x764, 16:9 Stage)");
+    println!(" Window:   Native Rust Desktop Window ({}x{}, {})", win_w as u32, win_h as u32, config.ratio);
     println!(" Controls: Arrow Keys / WASD (Move 4-Way), Space (Jump), Mouse Click");
     println!(" Close the window or press Alt+F4 to exit.");
     println!("============================================================");

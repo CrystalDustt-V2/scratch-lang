@@ -58,25 +58,35 @@ impl StageRenderer {
         // Retain notifications from the last 2.5 seconds
         self.notifications.retain(|(_, time)| time.elapsed().as_secs_f32() < 2.5);
 
-        // Aspect ratio calculation: enforce strict 16:9 (default 1280x720)
+        // Aspect ratio calculation from project resolution / active ratio preset
         let (target_w, target_h) = if config.resolution.width > 0 && config.resolution.height > 0 {
             (config.resolution.width as f32, config.resolution.height as f32)
         } else {
             (1280.0, 720.0)
         };
-        let aspect = 16.0 / 9.0;
+        let aspect = target_w / target_h.max(1.0);
         runtime.world.stage_width = target_w;
         runtime.world.stage_height = target_h;
 
-        let mut stage_w = available_size.x.max(320.0);
+        let avail_w = available_size.x.max(100.0);
+        let avail_h = available_size.y.max(100.0);
+
+        let mut stage_w = avail_w;
         let mut stage_h = stage_w / aspect;
-        if stage_h > available_size.y {
-            stage_h = available_size.y.max(180.0);
+        if stage_h > avail_h {
+            stage_h = avail_h;
             stage_w = stage_h * aspect;
         }
 
-        let (response, mut painter) = ui.allocate_painter(egui::Vec2::new(stage_w, stage_h), egui::Sense::click_and_drag());
-        let stage_rect = response.rect;
+        // Center stage within available viewport area
+        let offset_x = (avail_w - stage_w) / 2.0;
+        let offset_y = (avail_h - stage_h) / 2.0;
+
+        let (response, mut painter) = ui.allocate_painter(egui::vec2(avail_w, avail_h), egui::Sense::click_and_drag());
+        let stage_rect = egui::Rect::from_min_size(
+            egui::pos2(response.rect.min.x + offset_x, response.rect.min.y + offset_y),
+            egui::vec2(stage_w, stage_h),
+        );
 
         // Background color
         let bg_color = parse_background_color(&runtime.world.background);

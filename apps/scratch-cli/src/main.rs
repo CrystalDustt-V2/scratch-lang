@@ -69,6 +69,17 @@ enum Commands {
         #[command(subcommand)]
         command: PackageSubcommand,
     },
+    /// View or configure the game window aspect ratio (16:9, 4:3, or device)
+    Ratio {
+        /// Aspect ratio preset to set (16:9, 4:3, device)
+        #[arg(short, long)]
+        set: Option<String>,
+        /// Shortcut preset name (e.g. `scratch ratio device` or `scratch ratio 4:3`)
+        target: Option<String>,
+        /// Path to project directory (defaults to current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+    },
     /// Run preview of the project in a popup window
     Run {
         /// Path to project directory or .sch file (defaults to current directory)
@@ -85,6 +96,9 @@ enum Commands {
         /// Frame rate cap
         #[arg(long)]
         fps: Option<u32>,
+        /// Target aspect ratio override (16:9, 4:3, device)
+        #[arg(long)]
+        ratio: Option<String>,
     },
     /// Builds the project at the current directory
     Build {
@@ -389,7 +403,13 @@ fn main() {
                 }
             }
         },
-        Commands::Run { path, preview: _, headless, port: _, fps: _ } => {
+        Commands::Ratio { set, target, path } => {
+            if let Err(e) = handle_ratio_command(set, target, path) {
+                eprintln!("Ratio error: {}", e);
+                std::process::exit(1);
+            }
+        }
+        Commands::Run { path, preview: _, headless, port: _, fps: _, ratio } => {
             let target_path = path.unwrap_or_else(|| PathBuf::from("."));
             let is_headless = headless || config.preview_mode == "headless";
 
@@ -400,7 +420,7 @@ fn main() {
                     std::process::exit(1);
                 }
             } else {
-                if let Err(e) = gui_preview::run_preview_native(&target_path) {
+                if let Err(e) = gui_preview::run_preview_native(&target_path, ratio.as_deref()) {
                     eprintln!("Error launching live popup preview: {}", e);
                     std::process::exit(1);
                 }
@@ -922,5 +942,93 @@ fn start_lsp() -> Result<(), Box<dyn std::error::Error>> {
     let reader = std::io::BufReader::new(stdin.lock());
     let writer = std::io::BufWriter::new(stdout.lock());
     server.run(reader, writer)?;
+    Ok(())
+}
+
+fn handle_ratio_command(
+    set: Option<String>,
+    target: Option<String>,
+    path: Option<PathBuf>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let (screen_w, screen_h) = scratch_project::get_device_screen_resolution();
+    let dev_ratio_str = scratch_project::format_aspect_ratio(screen_w, screen_h);
+    let target_dir = path.unwrap_or_else(|| PathBuf::from("."));
+
+    // Check if user requested to set ratio
+    let set_target = set.or(target);
+
+    if let Some(desired) = set_target {
+        let preset = scratch_project::AspectRatioPreset::parse_str(&desired).ok_or_else(|| {
+            format!(
+                "Invalid ratio preset '{}'. Supported presets are: '16:9', '4:3', 'device' (detected {}).",
+                desired, dev_ratio_str
+            )
+        })?;
+
+        // Locate project.schproj
+        let project_file = if target_dir.is_file() {
+            target_dir.clone()
+        } else {
+            target_dir.join("project.schproj")
+        };
+
+        if !project_file.exists() {
+            return Err(format!(
+                "No project file found at '{}'. Run 'scratch new <name>' or specify a project path.",
+                project_file.display()
+            ).into());
+        }
+
+        let mut config = ProjectConfig::load_from_file(&project_file)?;
+        config.apply_ratio_preset(preset);
+        config.save_to_file(&project_file)?;
+
+        println!("============================================================");
+        println!(" Project Aspect Ratio Updated!");
+        println!(" Project:    {}", config.name);
+        println!(" Ratio:      {}", preset.label());
+        println!(" Saved to:   {}", project_file.display());
+        println!("============================================================");
+        return Ok(());
+    }
+
+    // Otherwise, print device info & available presets
+    println!("============================================================");
+    println!(" Scratch Device & Display Aspect Ratio");
+    println!("============================================================");
+    println!(" Primary Screen:    {}x{}", screen_w, screen_h);
+    println!(" Device Ratio:      {}", dev_ratio_str);
+    println!();
+    println!(" Available Presets:");
+    println!("   - 16:9   (1280x720) [Default Widescreen]");
+    println!("   - 4:3    (960x720)  [Classic Retro]");
+    println!("   - device ({}x{}) [Matches Current Monitor: {}]", screen_w, screen_h, dev_ratio_str);
+    println!();
+
+    // Check if inside a project
+    let project_file = if target_dir.is_file() {
+        target_dir.clone()
+    } else {
+        target_dir.join("project.schproj")
+    };
+
+    if project_file.exists() {
+        if let Ok(config) = ProjectConfig::load_from_file(&project_file) {
+            println!(" Current Project:");
+            println!("   Name:       {}", config.name);
+            println!("   Ratio:      {}", config.ratio);
+            println!("   Resolution: {}x{}", config.resolution.width, config.resolution.height);
+        }
+    } else {
+        println!(" Current Project:   None (not in a project directory)");
+    }
+
+    println!("------------------------------------------------------------");
+    println!(" To set your project ratio, run:");
+    println!("   scratch ratio --set device   # Use detected {} screen ratio", dev_ratio_str);
+    println!("   scratch ratio --set 16:9     # Use standard 16:9 widescreen");
+    println!("   scratch ratio --set 4:3      # Use classic 4:3 ratio");
+    println!("============================================================");
+
     Ok(())
 }

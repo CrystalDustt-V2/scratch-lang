@@ -132,8 +132,10 @@ function resolveScratchPath() {
     if (workspaceFolders && workspaceFolders.length > 0) {
         const root = workspaceFolders[0].uri.fsPath;
         const candidates = [
+            path.join(root, 'target', 'lsp', process.platform === 'win32' ? 'scratch.exe' : 'scratch'),
             path.join(root, 'target', 'debug', process.platform === 'win32' ? 'scratch.exe' : 'scratch'),
             path.join(root, 'target', 'release', process.platform === 'win32' ? 'scratch.exe' : 'scratch'),
+            path.join(root, '..', 'target', 'lsp', process.platform === 'win32' ? 'scratch.exe' : 'scratch'),
             path.join(root, '..', 'target', 'debug', process.platform === 'win32' ? 'scratch.exe' : 'scratch'),
             path.join(root, '..', 'target', 'release', process.platform === 'win32' ? 'scratch.exe' : 'scratch'),
         ];
